@@ -23,15 +23,56 @@ type MessageType int
 
 // Block contains the valid known MessageType values
 const (
-	MessageTypeDefault MessageType = iota
-	MessageTypeRecipientAdd
-	MessageTypeRecipientRemove
-	MessageTypeCall
-	MessageTypeChannelNameChange
-	MessageTypeChannelIconChange
-	MessageTypeChannelPinnedMessage
-	MessageTypeGuildMemberJoin
+	MessageTypeDefault                                 MessageType = 0
+	MessageTypeRecipientAdd                            MessageType = 1
+	MessageTypeRecipientRemove                         MessageType = 2
+	MessageTypeCall                                    MessageType = 3
+	MessageTypeChannelNameChange                       MessageType = 4
+	MessageTypeChannelIconChange                       MessageType = 5
+	MessageTypeChannelPinnedMessage                    MessageType = 6
+	MessageTypeGuildMemberJoin                         MessageType = 7
+	MessageTypeUserPremiumGuildSubscription            MessageType = 8
+	MessageTypeUserPremiumGuildSubscriptionTier1       MessageType = 9
+	MessageTypeUserPremiumGuildSubscriptionTier2       MessageType = 10
+	MessageTypeUserPremiumGuildSubscriptionTier3       MessageType = 11
+	MessageTypeChannelFollowAdd                        MessageType = 12
+	MessageTypeGuildDiscoveryDisqualified              MessageType = 14
+	MessageTypeGuildDiscoveryRequalified               MessageType = 15
+	MessageTypeGuildDiscoveryGracePeriodInitialWarning MessageType = 16
+	MessageTypeGuildDiscoveryGracePeriodFinalWarning   MessageType = 17
+	MessageTypeThreadCreated                           MessageType = 18
+	MessageTypeReply                                   MessageType = 19
+	MessageTypeApplicationCommand                      MessageType = 20
+	MessageTypeThreadStarterMessage                    MessageType = 21
+	MessageTypeGuildInviteReminder                     MessageType = 22
 )
+
+// IsSystem returns wether the message type is a system message type, a message created by discord
+func (m MessageType) IsSystem() bool {
+	switch m {
+	case MessageTypeRecipientAdd,
+		MessageTypeRecipientRemove,
+		MessageTypeCall,
+		MessageTypeChannelNameChange,
+		MessageTypeChannelIconChange,
+		MessageTypeChannelPinnedMessage,
+		MessageTypeGuildMemberJoin,
+		MessageTypeUserPremiumGuildSubscription,
+		MessageTypeUserPremiumGuildSubscriptionTier1,
+		MessageTypeUserPremiumGuildSubscriptionTier2,
+		MessageTypeUserPremiumGuildSubscriptionTier3,
+		MessageTypeChannelFollowAdd,
+		MessageTypeGuildDiscoveryDisqualified,
+		MessageTypeGuildDiscoveryRequalified,
+		MessageTypeGuildDiscoveryGracePeriodInitialWarning,
+		MessageTypeGuildDiscoveryGracePeriodFinalWarning,
+		MessageTypeThreadCreated,
+		MessageTypeGuildInviteReminder:
+		return true
+	default:
+		return false
+	}
+}
 
 // A Message stores all data related to a specific Discord message.
 type Message struct {
@@ -92,6 +133,8 @@ type Message struct {
 	WebhookID int64 `json:"webhook_id,string"`
 
 	Member *Member `json:"member"`
+
+	ReferencedMessage *Message `json:"referenced_message"`
 }
 
 func (m *Message) GetGuildID() int64 {
@@ -350,8 +393,10 @@ type AllowedMentions struct {
 	Parse []AllowedMentionType `json:"parse"`
 
 	// Slice of role ids to mention
-	Roles IDSlice `json:"roles,string"`
+	Roles IDSlice `json:"roles"`
 
 	// Slice of users to mention
-	Users IDSlice `json:"users,string"`
+	Users IDSlice `json:"users"`
+
+	RepliedUser bool `json:"replied_user"`
 }
