@@ -14,7 +14,7 @@ package discordgo
 import "strconv"
 
 // APIVersion is the Discord API version used for the REST and Websocket API.
-var APIVersion = "6"
+var APIVersion = "8"
 
 // Known Discord API Endpoints.
 var (
@@ -107,7 +107,7 @@ var (
 	EndpointChannelMessages           = func(cID int64) string { return EndpointChannels + StrID(cID) + "/messages" }
 	EndpointChannelMessage            = func(cID, mID int64) string { return EndpointChannels + StrID(cID) + "/messages/" + StrID(mID) }
 	EndpointChannelMessageAck         = func(cID, mID int64) string { return EndpointChannels + StrID(cID) + "/messages/" + StrID(mID) + "/ack" }
-	EndpointChannelMessagesBulkDelete = func(cID int64) string { return EndpointChannel(cID) + "/messages/bulk-delete" }
+	EndpointChannelMessagesBulkDelete = func(cID int64) string { return EndpointChannel(cID) + "/messages/bulk_delete" }
 	EndpointChannelMessagesPins       = func(cID int64) string { return EndpointChannel(cID) + "/pins" }
 	EndpointChannelMessagePin         = func(cID, mID int64) string { return EndpointChannel(cID) + "/pins/" + StrID(mID) }
 

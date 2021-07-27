@@ -249,7 +249,7 @@ type ChannelEdit struct {
 
 type RoleCreate struct {
 	Name        string `json:"name,omitempty"`
-	Permissions string `json:"permissions,omitempty"`
+	Permissions int64  `json:"permissions,string,omitempty"`
 	Color       int32  `json:"color,omitempty"`
 	Hoist       bool   `json:"hoist"`
 	Mentionable bool   `json:"mentionable"`
@@ -257,11 +257,18 @@ type RoleCreate struct {
 
 // A PermissionOverwrite holds permission overwrite data for a Channel
 type PermissionOverwrite struct {
-	ID    int64  `json:"id,string"`
-	Type  string `json:"type"`
-	Deny  int    `json:"deny"`
-	Allow int    `json:"allow"`
+	ID    int64                   `json:"id,string"`
+	Type  PermissionOverwriteType `json:"type"`
+	Deny  int64                   `json:"deny,string"`
+	Allow int64                   `json:"allow,string"`
 }
+
+type PermissionOverwriteType int
+
+const (
+	PermissionOverwriteTypeRole   PermissionOverwriteType = 0
+	PermissionOverwriteTypeMember PermissionOverwriteType = 1
+)
 
 // Emoji struct holds data related to Emoji's
 type Emoji struct {
@@ -350,9 +357,6 @@ type Guild struct {
 	// The ID of the AFK voice channel.
 	AfkChannelID int64 `json:"afk_channel_id,string"`
 
-	// The ID of the embed channel ID, used for embed widgets.
-	EmbedChannelID int64 `json:"embed_channel_id,string"`
-
 	// The user ID of the owner of the guild.
 	OwnerID int64 `json:"owner_id,string"`
 
@@ -374,9 +378,6 @@ type Guild struct {
 
 	// The verification level required for the guild.
 	VerificationLevel VerificationLevel `json:"verification_level"`
-
-	// Whether the guild has embedding enabled.
-	EmbedEnabled bool `json:"embed_enabled"`
 
 	// Whether the guild is considered large. This is
 	// determined by a member threshold in the identify packet,
@@ -472,7 +473,7 @@ type UserGuild struct {
 	Name        string `json:"name"`
 	Icon        string `json:"icon"`
 	Owner       bool   `json:"owner"`
-	Permissions int    `json:"permissions"`
+	Permissions int64  `json:"permissions,string"`
 }
 
 // A GuildParams stores all the data needed to update discord guild settings
@@ -515,7 +516,7 @@ type Role struct {
 	// The permissions of the role on the guild (doesn't include channel overrides).
 	// This is a combination of bit masks; the presence of a certain permission can
 	// be checked by performing a bitwise AND between this int and the permission.
-	Permissions int `json:"permissions"`
+	Permissions int64 `json:"permissions,string"`
 }
 
 // Mention returns a string which mentions the role
@@ -553,16 +554,10 @@ type VoiceState struct {
 
 // A Presence stores the online, offline, or idle and game status of Guild members.
 type Presence struct {
-	User   *User   `json:"user"`
-	Status Status  `json:"status"`
-	Game   *Game   `json:"game"`
-	Nick   string  `json:"nick"`
-	Roles  IDSlice `json:"roles,string"`
+	User   *User  `json:"user"`
+	Status Status `json:"status"`
 
 	Activities Activities `json:"activities"`
-
-	// not decoded
-	Since int64 `json:"since"`
 }
 
 // implement gojay.UnmarshalerJSONObject
@@ -574,13 +569,6 @@ func (p *Presence) UnmarshalJSONObject(dec *gojay.Decoder, key string) error {
 		err = dec.Object(p.User)
 	case "status":
 		err = dec.String((*string)(&p.Status))
-	case "game":
-		p.Game = &Game{}
-		err = dec.Object(p.Game)
-	case "nick":
-		err = dec.String(&p.Nick)
-	case "roles":
-		err = dec.DecodeArray(&p.Roles)
 	case "activities":
 		err = dec.DecodeArray(&p.Activities)
 	default:
@@ -1012,7 +1000,7 @@ type SessionStartLimit struct {
 
 // Constants for the different bit offsets of text channel permissions
 const (
-	PermissionReadMessages = 1 << (iota + 10)
+	PermissionReadMessages int64 = 1 << (iota + 10)
 	PermissionSendMessages
 	PermissionSendTTSMessages
 	PermissionManageMessages
@@ -1025,7 +1013,7 @@ const (
 
 // Constants for the different bit offsets of voice permissions
 const (
-	PermissionVoiceConnect = 1 << (iota + 20)
+	PermissionVoiceConnect int64 = 1 << (iota + 20)
 	PermissionVoiceSpeak
 	PermissionVoiceMuteMembers
 	PermissionVoiceDeafenMembers
@@ -1035,7 +1023,7 @@ const (
 
 // Constants for general management.
 const (
-	PermissionChangeNickname = 1 << (iota + 26)
+	PermissionChangeNickname int64 = 1 << (iota + 26)
 	PermissionManageNicknames
 	PermissionManageRoles
 	PermissionManageWebhooks
@@ -1044,7 +1032,7 @@ const (
 
 // Constants for the different bit offsets of general permissions
 const (
-	PermissionCreateInstantInvite = 1 << iota
+	PermissionCreateInstantInvite int64 = 1 << iota
 	PermissionKickMembers
 	PermissionBanMembers
 	PermissionAdministrator
@@ -1053,7 +1041,7 @@ const (
 	PermissionAddReactions
 	PermissionViewAuditLogs
 
-	PermissionAllText = PermissionReadMessages |
+	PermissionAllText int64 = PermissionReadMessages |
 		PermissionSendMessages |
 		PermissionSendTTSMessages |
 		PermissionManageMessages |
@@ -1061,13 +1049,13 @@ const (
 		PermissionAttachFiles |
 		PermissionReadMessageHistory |
 		PermissionMentionEveryone
-	PermissionAllVoice = PermissionVoiceConnect |
+	PermissionAllVoice int64 = PermissionVoiceConnect |
 		PermissionVoiceSpeak |
 		PermissionVoiceMuteMembers |
 		PermissionVoiceDeafenMembers |
 		PermissionVoiceMoveMembers |
 		PermissionVoiceUseVAD
-	PermissionAllChannel = PermissionAllText |
+	PermissionAllChannel int64 = PermissionAllText |
 		PermissionAllVoice |
 		PermissionCreateInstantInvite |
 		PermissionManageRoles |
@@ -1075,7 +1063,7 @@ const (
 		PermissionAddReactions |
 		PermissionViewAuditLogs |
 		PermissionManageWebhooks
-	PermissionAll = PermissionAllChannel |
+	PermissionAll int64 = PermissionAllChannel |
 		PermissionKickMembers |
 		PermissionBanMembers |
 		PermissionManageServer |

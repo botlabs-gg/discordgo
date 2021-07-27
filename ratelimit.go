@@ -236,7 +236,7 @@ func (b *Bucket) Release(headers http.Header, lockCounter int64) error {
 			return err
 		}
 
-		resetAt := time.Now().Add(time.Duration(parsedAfter) * time.Millisecond)
+		resetAt := time.Now().Add(time.Duration(parsedAfter) * time.Second)
 
 		// Lock either this single bucket or all buckets
 		global := headers.Get("X-RateLimit-Global")

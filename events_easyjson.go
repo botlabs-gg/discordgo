@@ -50,22 +50,6 @@ func easyjson692db02bDecodeGithubComJonas747Discordgo(in *jlexer.Lexer, out *Pre
 			}
 		case "status":
 			out.Status = Status(in.String())
-		case "game":
-			if in.IsNull() {
-				in.Skip()
-				out.Game = nil
-			} else {
-				if out.Game == nil {
-					out.Game = new(Game)
-				}
-				easyjson692db02bDecodeGithubComJonas747Discordgo2(in, out.Game)
-			}
-		case "nick":
-			out.Nick = string(in.String())
-		case "roles":
-			if data := in.Raw(); in.Ok() {
-				in.AddError((out.Roles).UnmarshalJSON(data))
-			}
 		case "activities":
 			if in.IsNull() {
 				in.Skip()
@@ -97,8 +81,6 @@ func easyjson692db02bDecodeGithubComJonas747Discordgo(in *jlexer.Lexer, out *Pre
 				}
 				in.Delim(']')
 			}
-		case "since":
-			out.Since = int64(in.Int64())
 		default:
 			in.SkipRecursive()
 		}
@@ -133,25 +115,6 @@ func easyjson692db02bEncodeGithubComJonas747Discordgo(out *jwriter.Writer, in Pr
 		out.String(string(in.Status))
 	}
 	{
-		const prefix string = ",\"game\":"
-		out.RawString(prefix)
-		if in.Game == nil {
-			out.RawString("null")
-		} else {
-			easyjson692db02bEncodeGithubComJonas747Discordgo2(out, *in.Game)
-		}
-	}
-	{
-		const prefix string = ",\"nick\":"
-		out.RawString(prefix)
-		out.String(string(in.Nick))
-	}
-	{
-		const prefix string = ",\"roles\":"
-		out.RawString(prefix)
-		out.Raw((in.Roles).MarshalJSON())
-	}
-	{
 		const prefix string = ",\"activities\":"
 		out.RawString(prefix)
 		if in.Activities == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
@@ -170,11 +133,6 @@ func easyjson692db02bEncodeGithubComJonas747Discordgo(out *jwriter.Writer, in Pr
 			}
 			out.RawByte(']')
 		}
-	}
-	{
-		const prefix string = ",\"since\":"
-		out.RawString(prefix)
-		out.Int64(int64(in.Since))
 	}
 	out.RawByte('}')
 }
@@ -533,8 +491,6 @@ func easyjson692db02bDecodeGithubComJonas747Discordgo5(in *jlexer.Lexer, out *Gu
 			out.Region = string(in.String())
 		case "afk_channel_id":
 			out.AfkChannelID = int64(in.Int64Str())
-		case "embed_channel_id":
-			out.EmbedChannelID = int64(in.Int64Str())
 		case "owner_id":
 			out.OwnerID = int64(in.Int64Str())
 		case "joined_at":
@@ -547,8 +503,6 @@ func easyjson692db02bDecodeGithubComJonas747Discordgo5(in *jlexer.Lexer, out *Gu
 			out.MemberCount = int(in.Int())
 		case "verification_level":
 			out.VerificationLevel = VerificationLevel(in.Int())
-		case "embed_enabled":
-			out.EmbedEnabled = bool(in.Bool())
 		case "large":
 			out.Large = bool(in.Bool())
 		case "default_message_notifications":
@@ -778,6 +732,10 @@ func easyjson692db02bDecodeGithubComJonas747Discordgo5(in *jlexer.Lexer, out *Gu
 			out.WidgetChannelID = string(in.String())
 		case "system_channel_id":
 			out.SystemChannelID = string(in.String())
+		case "approximate_member_count":
+			out.ApproximateMemberCount = int(in.Int())
+		case "approximate_presence_count":
+			out.ApproximatePresenceCount = int(in.Int())
 		default:
 			in.SkipRecursive()
 		}
@@ -828,11 +786,6 @@ func easyjson692db02bEncodeGithubComJonas747Discordgo5(out *jwriter.Writer, in G
 		out.Int64Str(int64(in.AfkChannelID))
 	}
 	{
-		const prefix string = ",\"embed_channel_id\":"
-		out.RawString(prefix)
-		out.Int64Str(int64(in.EmbedChannelID))
-	}
-	{
 		const prefix string = ",\"owner_id\":"
 		out.RawString(prefix)
 		out.Int64Str(int64(in.OwnerID))
@@ -861,11 +814,6 @@ func easyjson692db02bEncodeGithubComJonas747Discordgo5(out *jwriter.Writer, in G
 		const prefix string = ",\"verification_level\":"
 		out.RawString(prefix)
 		out.Int(int(in.VerificationLevel))
-	}
-	{
-		const prefix string = ",\"embed_enabled\":"
-		out.RawString(prefix)
-		out.Bool(bool(in.EmbedEnabled))
 	}
 	{
 		const prefix string = ",\"large\":"
@@ -1052,6 +1000,16 @@ func easyjson692db02bEncodeGithubComJonas747Discordgo5(out *jwriter.Writer, in G
 		const prefix string = ",\"system_channel_id\":"
 		out.RawString(prefix)
 		out.String(string(in.SystemChannelID))
+	}
+	{
+		const prefix string = ",\"approximate_member_count\":"
+		out.RawString(prefix)
+		out.Int(int(in.ApproximateMemberCount))
+	}
+	{
+		const prefix string = ",\"approximate_presence_count\":"
+		out.RawString(prefix)
+		out.Int(int(in.ApproximatePresenceCount))
 	}
 	out.RawByte('}')
 }
@@ -1413,11 +1371,11 @@ func easyjson692db02bDecodeGithubComJonas747Discordgo12(in *jlexer.Lexer, out *P
 		case "id":
 			out.ID = int64(in.Int64Str())
 		case "type":
-			out.Type = string(in.String())
+			out.Type = PermissionOverwriteType(in.Int())
 		case "deny":
-			out.Deny = int(in.Int())
+			out.Deny = int64(in.Int64Str())
 		case "allow":
-			out.Allow = int(in.Int())
+			out.Allow = int64(in.Int64Str())
 		default:
 			in.SkipRecursive()
 		}
@@ -1440,17 +1398,17 @@ func easyjson692db02bEncodeGithubComJonas747Discordgo12(out *jwriter.Writer, in 
 	{
 		const prefix string = ",\"type\":"
 		out.RawString(prefix)
-		out.String(string(in.Type))
+		out.Int(int(in.Type))
 	}
 	{
 		const prefix string = ",\"deny\":"
 		out.RawString(prefix)
-		out.Int(int(in.Deny))
+		out.Int64Str(int64(in.Deny))
 	}
 	{
 		const prefix string = ",\"allow\":"
 		out.RawString(prefix)
-		out.Int(int(in.Allow))
+		out.Int64Str(int64(in.Allow))
 	}
 	out.RawByte('}')
 }
@@ -1485,22 +1443,6 @@ func easyjson692db02bDecodeGithubComJonas747Discordgo9(in *jlexer.Lexer, out *Pr
 			}
 		case "status":
 			out.Status = Status(in.String())
-		case "game":
-			if in.IsNull() {
-				in.Skip()
-				out.Game = nil
-			} else {
-				if out.Game == nil {
-					out.Game = new(Game)
-				}
-				easyjson692db02bDecodeGithubComJonas747Discordgo2(in, out.Game)
-			}
-		case "nick":
-			out.Nick = string(in.String())
-		case "roles":
-			if data := in.Raw(); in.Ok() {
-				in.AddError((out.Roles).UnmarshalJSON(data))
-			}
 		case "activities":
 			if in.IsNull() {
 				in.Skip()
@@ -1532,8 +1474,6 @@ func easyjson692db02bDecodeGithubComJonas747Discordgo9(in *jlexer.Lexer, out *Pr
 				}
 				in.Delim(']')
 			}
-		case "since":
-			out.Since = int64(in.Int64())
 		default:
 			in.SkipRecursive()
 		}
@@ -1563,25 +1503,6 @@ func easyjson692db02bEncodeGithubComJonas747Discordgo9(out *jwriter.Writer, in P
 		out.String(string(in.Status))
 	}
 	{
-		const prefix string = ",\"game\":"
-		out.RawString(prefix)
-		if in.Game == nil {
-			out.RawString("null")
-		} else {
-			easyjson692db02bEncodeGithubComJonas747Discordgo2(out, *in.Game)
-		}
-	}
-	{
-		const prefix string = ",\"nick\":"
-		out.RawString(prefix)
-		out.String(string(in.Nick))
-	}
-	{
-		const prefix string = ",\"roles\":"
-		out.RawString(prefix)
-		out.Raw((in.Roles).MarshalJSON())
-	}
-	{
 		const prefix string = ",\"activities\":"
 		out.RawString(prefix)
 		if in.Activities == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
@@ -1600,11 +1521,6 @@ func easyjson692db02bEncodeGithubComJonas747Discordgo9(out *jwriter.Writer, in P
 			}
 			out.RawByte(']')
 		}
-	}
-	{
-		const prefix string = ",\"since\":"
-		out.RawString(prefix)
-		out.Int64(int64(in.Since))
 	}
 	out.RawByte('}')
 }
@@ -1819,7 +1735,7 @@ func easyjson692db02bDecodeGithubComJonas747Discordgo6(in *jlexer.Lexer, out *Ro
 		case "position":
 			out.Position = int(in.Int())
 		case "permissions":
-			out.Permissions = int(in.Int())
+			out.Permissions = int64(in.Int64Str())
 		default:
 			in.SkipRecursive()
 		}
@@ -1872,7 +1788,7 @@ func easyjson692db02bEncodeGithubComJonas747Discordgo6(out *jwriter.Writer, in R
 	{
 		const prefix string = ",\"permissions\":"
 		out.RawString(prefix)
-		out.Int(int(in.Permissions))
+		out.Int64Str(int64(in.Permissions))
 	}
 	out.RawByte('}')
 }

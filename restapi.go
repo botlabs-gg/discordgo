@@ -171,7 +171,7 @@ func (s *Session) doRequest(method, urlStr, contentType string, b []byte, bucket
 		s.log(LogInformational, "Rate Limiting %s, retry in %d", urlStr, rl.RetryAfter)
 		s.handleEvent(rateLimitEventType, &RateLimit{TooManyRequests: &rl, URL: urlStr})
 
-		time.Sleep(rl.RetryAfter * time.Millisecond)
+		time.Sleep(rl.RetryAfter * time.Second)
 		// we can make the above smarter
 		// this method can cause longer delays than required
 		return nil, true, true, nil
@@ -233,7 +233,6 @@ func (s *Session) innerDoRequest(method, urlStr, contentType string, b []byte, b
 
 	// TODO: Make a configurable static variable.
 	req.Header.Set("User-Agent", fmt.Sprintf("DiscordBot (https://github.com/jonas747/discordgo, v%s)", VERSION))
-	req.Header.Set("X-RateLimit-Precision", "millisecond")
 
 	// for things such as stats collecting in the roundtripper for example
 	ctx := context.WithValue(req.Context(), CtxKeyRatelimitBucket, bucket)
@@ -551,7 +550,7 @@ func (s *Session) UserGuildSettingsEdit(guildID int64, settings *UserGuildSettin
 //
 // NOTE: This function is now deprecated and will be removed in the future.
 // Please see the same function inside state.go
-func (s *Session) UserChannelPermissions(userID, channelID int64) (apermissions int, err error) {
+func (s *Session) UserChannelPermissions(userID, channelID int64) (apermissions int64, err error) {
 	// Try to just get permissions from state.
 	apermissions, err = s.State.UserChannelPermissions(userID, channelID)
 	if err == nil {
@@ -593,7 +592,7 @@ func (s *Session) UserChannelPermissions(userID, channelID int64) (apermissions 
 
 // Calculates the permissions for a member.
 // https://support.discordapp.com/hc/en-us/articles/206141927-How-is-the-permission-hierarchy-structured-
-func MemberPermissions(guild *Guild, channel *Channel, member *Member) (apermissions int) {
+func MemberPermissions(guild *Guild, channel *Channel, member *Member) (apermissions int64) {
 	userID := member.User.ID
 
 	if userID == guild.OwnerID {
@@ -631,13 +630,13 @@ func MemberPermissions(guild *Guild, channel *Channel, member *Member) (apermiss
 			}
 		}
 
-		denies := 0
-		allows := 0
+		denies := int64(0)
+		allows := int64(0)
 
 		// Member overwrites can override role overrides, so do two passes
 		for _, overwrite := range channel.PermissionOverwrites {
 			for _, roleID := range member.Roles {
-				if overwrite.Type == "role" && roleID == overwrite.ID {
+				if overwrite.Type == PermissionOverwriteTypeRole && roleID == overwrite.ID {
 					denies |= overwrite.Deny
 					allows |= overwrite.Allow
 					break
@@ -649,7 +648,7 @@ func MemberPermissions(guild *Guild, channel *Channel, member *Member) (apermiss
 		apermissions |= allows
 
 		for _, overwrite := range channel.PermissionOverwrites {
-			if overwrite.Type == "member" && overwrite.ID == userID {
+			if overwrite.Type == PermissionOverwriteTypeMember && overwrite.ID == userID {
 				apermissions &= ^overwrite.Deny
 				apermissions |= overwrite.Allow
 				break
@@ -820,7 +819,7 @@ func (s *Session) GuildBanCreateWithReason(guildID, userID int64, reason string,
 
 	data := make(map[string]interface{})
 	if days > 0 {
-		data["delete-message-days"] = days
+		data["delete_message_days"] = days
 	}
 
 	if reason != "" {
