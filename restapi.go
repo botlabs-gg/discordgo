@@ -618,6 +618,8 @@ func MemberPermissions(guild *Guild, channel *Channel, member *Member) (apermiss
 
 	if apermissions&PermissionAdministrator == PermissionAdministrator {
 		apermissions |= PermissionAll
+		// Administrator overwrites everything, so no point in checking further
+		return
 	}
 
 	if channel != nil {
@@ -654,10 +656,6 @@ func MemberPermissions(guild *Guild, channel *Channel, member *Member) (apermiss
 				break
 			}
 		}
-	}
-
-	if apermissions&PermissionAdministrator == PermissionAdministrator {
-		apermissions |= PermissionAllChannel
 	}
 
 	return apermissions

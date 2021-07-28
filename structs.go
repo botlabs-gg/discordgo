@@ -159,13 +159,17 @@ type ChannelType int
 
 // Block contains known ChannelType values
 const (
-	ChannelTypeGuildText ChannelType = iota
-	ChannelTypeDM
-	ChannelTypeGuildVoice
-	ChannelTypeGroupDM
-	ChannelTypeGuildCategory
-	ChannelTypeGuildNews
-	ChannelTypeGuildStore
+	ChannelTypeGuildText          ChannelType = 0  // a text channel within a server
+	ChannelTypeDM                 ChannelType = 1  // a direct message between users
+	ChannelTypeGuildVoice         ChannelType = 2  // a voice channel within a server
+	ChannelTypeGroupDM            ChannelType = 3  // a direct message between multiple users
+	ChannelTypeGuildCategory      ChannelType = 4  // an organizational category that contains up to 50 channels
+	ChannelTypeGuildNews          ChannelType = 5  // a channel that users can follow and crosspost into their own server
+	ChannelTypeGuildStore         ChannelType = 6  // a channel in which game developers can sell their game on Discord
+	ChannelTypeGuildNewsThread    ChannelType = 10 // a temporary sub-channel within a GUILD_NEWS channel
+	ChannelTypeGuildPublicThread  ChannelType = 11 // a temporary sub-channel within a GUILD_TEXT channel
+	ChannelTypeGuildPrivateThread ChannelType = 12 // a temporary sub-channel within a GUILD_TEXT channel that is only viewable by those invited and those with the MANAGE_THREADS permission
+	ChannelTypeGuildStageVoice    ChannelType = 13 // a voice channel for hosting events with an audience
 )
 
 // A Channel holds all data related to an individual Discord channel.
@@ -219,6 +223,8 @@ type Channel struct {
 	ParentID int64 `json:"parent_id,string"`
 
 	RateLimitPerUser int `json:"rate_limit_per_user"`
+
+	ThreadMetadata *ThreadMetadata `json:"thread_metadata"`
 }
 
 func (c *Channel) GetChannelID() int64 {
@@ -998,80 +1004,6 @@ type SessionStartLimit struct {
 	ResetAfter int64 `json:"reset_after"`
 }
 
-// Constants for the different bit offsets of text channel permissions
-const (
-	PermissionReadMessages int64 = 1 << (iota + 10)
-	PermissionSendMessages
-	PermissionSendTTSMessages
-	PermissionManageMessages
-	PermissionEmbedLinks
-	PermissionAttachFiles
-	PermissionReadMessageHistory
-	PermissionMentionEveryone
-	PermissionUseExternalEmojis
-)
-
-// Constants for the different bit offsets of voice permissions
-const (
-	PermissionVoiceConnect int64 = 1 << (iota + 20)
-	PermissionVoiceSpeak
-	PermissionVoiceMuteMembers
-	PermissionVoiceDeafenMembers
-	PermissionVoiceMoveMembers
-	PermissionVoiceUseVAD
-)
-
-// Constants for general management.
-const (
-	PermissionChangeNickname int64 = 1 << (iota + 26)
-	PermissionManageNicknames
-	PermissionManageRoles
-	PermissionManageWebhooks
-	PermissionManageEmojis
-)
-
-// Constants for the different bit offsets of general permissions
-const (
-	PermissionCreateInstantInvite int64 = 1 << iota
-	PermissionKickMembers
-	PermissionBanMembers
-	PermissionAdministrator
-	PermissionManageChannels
-	PermissionManageServer
-	PermissionAddReactions
-	PermissionViewAuditLogs
-
-	PermissionAllText int64 = PermissionReadMessages |
-		PermissionSendMessages |
-		PermissionSendTTSMessages |
-		PermissionManageMessages |
-		PermissionEmbedLinks |
-		PermissionAttachFiles |
-		PermissionReadMessageHistory |
-		PermissionMentionEveryone
-	PermissionAllVoice int64 = PermissionVoiceConnect |
-		PermissionVoiceSpeak |
-		PermissionVoiceMuteMembers |
-		PermissionVoiceDeafenMembers |
-		PermissionVoiceMoveMembers |
-		PermissionVoiceUseVAD
-	PermissionAllChannel int64 = PermissionAllText |
-		PermissionAllVoice |
-		PermissionCreateInstantInvite |
-		PermissionManageRoles |
-		PermissionManageChannels |
-		PermissionAddReactions |
-		PermissionViewAuditLogs |
-		PermissionManageWebhooks
-	PermissionAll int64 = PermissionAllChannel |
-		PermissionKickMembers |
-		PermissionBanMembers |
-		PermissionManageServer |
-		PermissionAdministrator |
-		PermissionManageNicknames |
-		PermissionManageEmojis
-)
-
 // Block contains Discord JSON Error Response codes
 const (
 	ErrCodeUnknownAccount     = 10001
@@ -1426,4 +1358,11 @@ type MessageInteraction struct {
 	Kind InteractionType `json:"type"`      // the type of interaction
 	Name string          `json:"name"`      // the name of the ApplicationCommand
 	User User            `json:"user"`      // object the user who invoked the interaction
+}
+
+type ThreadMetadata struct {
+	Archived            bool   `json:"archived"`              // whether the thread is archived
+	AutoArchiveDuration int    `json:"auto_archive_duration"` // duration in minutes to automatically archive the thread after recent activity, can be set to: 60, 1440, 4320, 10080
+	ArchiveTimestamp    string `json:"archive_timestamp"`     // timestamp when the thread's archive status was last changed, used for calculating recent activity
+	Locked              bool   `json:"locked"`                // whether the thread is locked; when a thread is locked, only users with MANAGE_THREADS can unarchive it
 }
