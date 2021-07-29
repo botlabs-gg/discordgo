@@ -1,6 +1,7 @@
 package discordgo
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -236,7 +237,21 @@ func (b *Bucket) Release(headers http.Header, lockCounter int64) error {
 			return err
 		}
 
-		resetAt := time.Now().Add(time.Duration(parsedAfter) * time.Millisecond)
+		var afterD time.Duration
+
+		// This is a fix for cloudflare sending ratelimits in seconds while discord in milliseconds
+		// This can be removed for gateway v8
+		if strings.Contains(headers.Get("via"), "1.1 google") {
+			afterD = time.Duration(parsedAfter) * time.Millisecond
+		} else {
+			afterD = time.Duration(parsedAfter) * time.Second
+		}
+
+		if afterD > time.Second*1000 {
+			logHighRatelimit(afterD, b.Key, headers)
+		}
+
+		resetAt := time.Now().Add(afterD)
 
 		// Lock either this single bucket or all buckets
 		global := headers.Get("X-RateLimit-Global")
@@ -251,7 +266,13 @@ func (b *Bucket) Release(headers http.Header, lockCounter int64) error {
 			return err
 		}
 
-		b.reset = time.Now().Add(time.Millisecond * time.Duration(resetAfterParsed*1000))
+		dur := time.Millisecond * time.Duration(resetAfterParsed*1000)
+
+		if dur > time.Second*1000 {
+			logHighRatelimit(dur, b.Key, headers)
+		}
+
+		b.reset = time.Now().Add(dur)
 	}
 
 	// Udpate remaining if header is present
@@ -265,4 +286,9 @@ func (b *Bucket) Release(headers http.Header, lockCounter int64) error {
 	}
 
 	return nil
+}
+
+func logHighRatelimit(limit time.Duration, bucket string, headers http.Header) {
+	serialized, _ := json.Marshal(headers)
+	msglog(LogError, 2, "very high ratelimit on %s: %s, headers: %s", bucket, limit, string(serialized))
 }
