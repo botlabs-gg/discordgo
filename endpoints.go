@@ -14,7 +14,7 @@ package discordgo
 import "strconv"
 
 // APIVersion is the Discord API version used for the REST and Websocket API.
-var APIVersion = "6"
+var APIVersion = "9"
 
 // Known Discord API Endpoints.
 var (
@@ -185,6 +185,20 @@ var (
 	}
 	EndpointInteractionFollowupMessage = func(applicationID int64, token string, messageID int64) string {
 		return EndpointWebhookInteraction(applicationID, token) + "/messages/" + StrID(messageID)
+	}
+
+	// Threads
+	EndpointGuildActiveThreads           = func(cID int64) string { return EndpointGuilds + StrID(cID) + "/threads/active" }
+	EndpointChannelUsers                 = func(cID int64) string { return EndpointChannel(cID) + "/users" }
+	EndpointThreads                      = func(cID int64) string { return EndpointChannel(cID) + "/threads" }
+	EndpointThreadMembers                = func(cID int64) string { return EndpointChannel(cID) + "/thread-members/" }
+	EndpointChannelActiveThreads         = func(cID int64) string { return EndpointThreads(cID) + "/active" }
+	EndpointArchivedThreads              = func(cID int64) string { return EndpointThreads(cID) + "/archived" }
+	EndpointPublicArchivedThreads        = func(cID int64) string { return EndpointArchivedThreads(cID) + "/public" }
+	EndpointPrivateArchivedThreads       = func(cID int64) string { return EndpointArchivedThreads(cID) + "/private" }
+	EndpointJoinedPrivateArchivedThreads = func(cID int64) string { return EndpointChannelUsers(cID) + "/@me/threads/archived/private" }
+	EndpointChannelMessageThreads        = func(cID, mID int64) string {
+		return EndpointChannels + StrID(cID) + "/messages/" + StrID(mID) + "/threads"
 	}
 )
 

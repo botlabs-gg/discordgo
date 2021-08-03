@@ -159,13 +159,17 @@ type ChannelType int
 
 // Block contains known ChannelType values
 const (
-	ChannelTypeGuildText ChannelType = iota
-	ChannelTypeDM
-	ChannelTypeGuildVoice
-	ChannelTypeGroupDM
-	ChannelTypeGuildCategory
-	ChannelTypeGuildNews
-	ChannelTypeGuildStore
+	ChannelTypeGuildText          ChannelType = 0
+	ChannelTypeDM                 ChannelType = 1
+	ChannelTypeGuildVoice         ChannelType = 2
+	ChannelTypeGroupDM            ChannelType = 3
+	ChannelTypeGuildCategory      ChannelType = 4
+	ChannelTypeGuildNews          ChannelType = 5
+	ChannelTypeGuildStore         ChannelType = 6
+	ChannelTypeGuildNewsThread    ChannelType = 10
+	ChannelTypeGuildPublicThread  ChannelType = 11
+	ChannelTypeGuildPrivateThread ChannelType = 12
+	ChannelTypeGuildStageVoice    ChannelType = 13
 )
 
 // A Channel holds all data related to an individual Discord channel.
@@ -219,6 +223,23 @@ type Channel struct {
 	ParentID int64 `json:"parent_id,string"`
 
 	RateLimitPerUser int `json:"rate_limit_per_user"`
+
+	// An approximate count of messages in a thread, stops counting at 50
+	MessageCount int `json:"message_count,omitempty"`
+
+	// An approximate count of users in a thread, stops counting at 50
+	MemberCount int `json:"member_count,omitempty"`
+
+	// Thread-specific fields not needed by other channels
+	ThreadMetadata *ThreadMetadata `json:"thread_metadata"`
+
+	// Thread member object for the current user, if they have joined the thread
+	// Only included on certain API endpoints
+	Member *ThreadMember `json:"member"`
+
+	// Default duration for newly created threads, in minutes,
+	// to automatically archive the thread after recent activity,
+	DefaultAutoArchiveDuration ArchiveDuration `json:"default_auto_archive_duration,omitempty"`
 }
 
 func (c *Channel) GetChannelID() int64 {
@@ -233,6 +254,61 @@ func (c *Channel) GetGuildID() int64 {
 func (c *Channel) Mention() string {
 	return fmt.Sprintf("<#%d>", c.ID)
 }
+
+// IsThread returns wether the specific channel is a thread
+func (c *Channel) IsThread() bool {
+	return c.Type == ChannelTypeGuildNewsThread || c.Type == ChannelTypeGuildPrivateThread || c.Type == ChannelTypeGuildPublicThread
+}
+
+type ThreadMetadata struct {
+	Archived            bool            `json:"archived"`
+	AutoArchiveDuration ArchiveDuration `json:"auto_archive_duration"`
+	ArchiveTimestamp    Timestamp       `json:"archive_timestamp"`
+	Locked              bool            `json:"locked,omitempty"`
+}
+
+type ThreadMember struct {
+	ID            int64     `json:"id,string,omitempty"`
+	UserID        int64     `json:"user_id,string,omitempty"`
+	JoinTimeStamp Timestamp `json:"join_timestamp"`
+	Flags         int       `json:"flags"`
+}
+
+// ThreadCreateData is the data used to create threads
+type ThreadCreateData struct {
+	// 2-100 character channel name
+	Name string `json:"name"`
+
+	// Duration in minutes to automatically archive the thread
+	// after recent activity.
+	AutoArchiveDuration ArchiveDuration `json:"auto_archive_duration"`
+
+	// Defaults to `PRIVATE_THREAD` in order to match the behavior
+	// when thread documentation was first published.
+	Type ChannelType `json:"type"`
+}
+
+type ThreadEditData struct {
+	Name             string `json:"name"`
+	Archived         bool   `json:"archived"`
+	Locked           bool   `json:"locked"`
+	RateLimitPerUser *int   `json:"rate_limit_per_user,omitempty"`
+
+	// Duration in minutes to automatically archive the thread
+	// after recent activity.
+	AutoArchiveDuration ArchiveDuration `json:"auto_archive_duration"`
+}
+
+// ArchiveDuration is the time it takes to auto-archive a thread in minutes
+type ArchiveDuration int
+
+// Allowed values for ArchiveDuration by discord
+const (
+	ArchiveDurationOneHour   ArchiveDuration = 60
+	ArchiveDurationOneDay    ArchiveDuration = 1440
+	ArchiveDurationThreeDays ArchiveDuration = 4320
+	ArchiveDurationOneWeek   ArchiveDuration = 10080
+)
 
 // A ChannelEdit holds Channel Feild data for a channel edit.
 type ChannelEdit struct {
@@ -440,6 +516,10 @@ type Guild struct {
 
 	ApproximateMemberCount   int `json:"approximate_member_count"`
 	ApproximatePresenceCount int `json:"approximate_presence_count"`
+
+	// All active threads in the guild that current user has permission to view
+	// Only sent within the GUILD_CREATE event
+	Threads []*Channel `json:"threads"`
 }
 
 func (g *Guild) GetGuildID() int64 {
@@ -864,6 +944,7 @@ type GuildAuditLog struct {
 	} `json:"webhooks,omitempty"`
 	Users           []*User          `json:"users,omitempty"`
 	AuditLogEntries []*AuditLogEntry `json:"audit_log_entries"`
+	Threads         []*Channel       `json:"threads"`
 }
 
 type AuditLogEntry struct {
@@ -923,6 +1004,10 @@ const (
 	AuditLogActionEmojiDelete = 62
 
 	AuditLogActionMessageDelete = 72
+
+	AuditLogActionThreadCreate = 110
+	AuditLogActionThreadUpdate = 111
+	AuditLogActionThreadDelete = 112
 )
 
 // A UserGuildSettingsChannelOverride stores data for a channel override for a users guild settings.
@@ -1021,6 +1106,10 @@ const (
 	PermissionReadMessageHistory
 	PermissionMentionEveryone
 	PermissionUseExternalEmojis
+
+	PermissionManageThreads     = 0x0000000400000000
+	PermissionUsePublicThreads  = 0x0000000800000000
+	PermissionUsePrivateThreads = 0x0000001000000000
 )
 
 // Constants for the different bit offsets of voice permissions
@@ -1060,7 +1149,10 @@ const (
 		PermissionEmbedLinks |
 		PermissionAttachFiles |
 		PermissionReadMessageHistory |
-		PermissionMentionEveryone
+		PermissionMentionEveryone |
+		PermissionManageThreads |
+		PermissionUsePublicThreads |
+		PermissionUsePrivateThreads
 	PermissionAllVoice = PermissionVoiceConnect |
 		PermissionVoiceSpeak |
 		PermissionVoiceMuteMembers |
@@ -1105,37 +1197,46 @@ const (
 	ErrCodeBotsCannotUseEndpoint  = 20001
 	ErrCodeOnlyBotsCanUseEndpoint = 20002
 
-	ErrCodeMaximumGuildsReached     = 30001
-	ErrCodeMaximumFriendsReached    = 30002
-	ErrCodeMaximumPinsReached       = 30003
-	ErrCodeMaximumGuildRolesReached = 30005
-	ErrCodeTooManyReactions         = 30010
+	ErrCodeMaximumGuildsReached                     = 30001
+	ErrCodeMaximumFriendsReached                    = 30002
+	ErrCodeMaximumPinsReached                       = 30003
+	ErrCodeMaximumGuildRolesReached                 = 30005
+	ErrCodeTooManyReactions                         = 30010
+	ErrCodeMaximumNumberOfThreadParticipantsReached = 30033
 
 	ErrCodeUnauthorized = 40001
 
-	ErrCodeMissingAccess                             = 50001
-	ErrCodeInvalidAccountType                        = 50002
-	ErrCodeCannotExecuteActionOnDMChannel            = 50003
-	ErrCodeEmbedCisabled                             = 50004
-	ErrCodeCannotEditFromAnotherUser                 = 50005
-	ErrCodeCannotSendEmptyMessage                    = 50006
-	ErrCodeCannotSendMessagesToThisUser              = 50007
-	ErrCodeCannotSendMessagesInVoiceChannel          = 50008
-	ErrCodeChannelVerificationLevelTooHigh           = 50009
-	ErrCodeOAuth2ApplicationDoesNotHaveBot           = 50010
-	ErrCodeOAuth2ApplicationLimitReached             = 50011
-	ErrCodeInvalidOAuthState                         = 50012
-	ErrCodeMissingPermissions                        = 50013
-	ErrCodeInvalidAuthenticationToken                = 50014
-	ErrCodeNoteTooLong                               = 50015
-	ErrCodeTooFewOrTooManyMessagesToDelete           = 50016
-	ErrCodeCanOnlyPinMessageToOriginatingChannel     = 50019
-	ErrCodeCannotExecuteActionOnSystemMessage        = 50021
-	ErrCodeMessageProvidedTooOldForBulkDelete        = 50034
-	ErrCodeInvalidFormBody                           = 50035
-	ErrCodeInviteAcceptedToGuildApplicationsBotNotIn = 50036
+	ErrCodeMissingAccess                              = 50001
+	ErrCodeInvalidAccountType                         = 50002
+	ErrCodeCannotExecuteActionOnDMChannel             = 50003
+	ErrCodeEmbedDisabled                              = 50004
+	ErrCodeCannotEditFromAnotherUser                  = 50005
+	ErrCodeCannotSendEmptyMessage                     = 50006
+	ErrCodeCannotSendMessagesToThisUser               = 50007
+	ErrCodeCannotSendMessagesInVoiceChannel           = 50008
+	ErrCodeChannelVerificationLevelTooHigh            = 50009
+	ErrCodeOAuth2ApplicationDoesNotHaveBot            = 50010
+	ErrCodeOAuth2ApplicationLimitReached              = 50011
+	ErrCodeInvalidOAuthState                          = 50012
+	ErrCodeMissingPermissions                         = 50013
+	ErrCodeInvalidAuthenticationToken                 = 50014
+	ErrCodeNoteTooLong                                = 50015
+	ErrCodeTooFewOrTooManyMessagesToDelete            = 50016
+	ErrCodeCanOnlyPinMessageToOriginatingChannel      = 50019
+	ErrCodeCannotExecuteActionOnSystemMessage         = 50021
+	ErrCodeMessageProvidedTooOldForBulkDelete         = 50034
+	ErrCodeInvalidFormBody                            = 50035
+	ErrCodeInviteAcceptedToGuildApplicationsBotNotIn  = 50036
+	ErrCodePerformedOperationOnArchivedThread         = 50083
+	ErrCodeInvalidThreadNotificationSettings          = 50084
+	ErrCodeBeforeValueIsEarlierThanThreadCreationDate = 50085
 
 	ErrCodeReactionBlocked = 90001
+
+	ErrCodeThreadAlreadyCreatedForThisMessage              = 160004
+	ErrCodeThreadIsLocked                                  = 160005
+	ErrCodeMaximumNumberOfActiveThreadsReached             = 160006
+	ErrCodeMaximumNumberOfActiveAnnouncementThreadsReached = 160007
 )
 
 // InviteUser is a partial user obejct from the invite event(s)

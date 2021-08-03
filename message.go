@@ -23,14 +23,28 @@ type MessageType int
 
 // Block contains the valid known MessageType values
 const (
-	MessageTypeDefault MessageType = iota
-	MessageTypeRecipientAdd
-	MessageTypeRecipientRemove
-	MessageTypeCall
-	MessageTypeChannelNameChange
-	MessageTypeChannelIconChange
-	MessageTypeChannelPinnedMessage
-	MessageTypeGuildMemberJoin
+	MessageTypeDefault                                 MessageType = 0
+	MessageTypeRecipientAdd                            MessageType = 1
+	MessageTypeRecipientRemove                         MessageType = 2
+	MessageTypeCall                                    MessageType = 3
+	MessageTypeChannelNameChange                       MessageType = 4
+	MessageTypeChannelIconChange                       MessageType = 5
+	MessageTypeChannelPinnedMessage                    MessageType = 6
+	MessageTypeGuildMemberJoin                         MessageType = 7
+	MessageTypeUserPremiumGuildSubscription            MessageType = 8
+	MessageTypeUserPremiumGuildSubscriptionTierOne     MessageType = 9
+	MessageTypeUserPremiumGuildSubscriptionTierTwo     MessageType = 10
+	MessageTypeUserPremiumGuildSubscriptionTierThree   MessageType = 11
+	MessageTypeChannelFollowAdd                        MessageType = 12
+	MessageTypeGuildDiscoveryDisqualified              MessageType = 14
+	MessageTypeGuildDiscoveryRequalified               MessageType = 15
+	MessageTypeGuildDiscoveryGracePeriodInitialWarning MessageType = 16
+	MessageTypeGuildDiscoveryGracePeriodFinalWarning   MessageType = 17
+	MessageTypeThreadCreated                           MessageType = 18
+	MessageTypeReply                                   MessageType = 19
+	MessageTypeApplicationCommand                      MessageType = 20
+	MessageTypeThreadStarterMessage                    MessageType = 21
+	MessageTypeInviteReminder                          MessageType = 22
 )
 
 // A Message stores all data related to a specific Discord message.
@@ -92,6 +106,14 @@ type Message struct {
 	WebhookID int64 `json:"webhook_id,string"`
 
 	Member *Member `json:"member"`
+
+	// The flags of the message, which describe extra features of a message.
+	// This is a combination of bit masks; the presence of a certain permission can
+	// be checked by performing a bitwise AND between this int and the flag.
+	Flags MessageFlags `json:"flags"`
+
+	// The thread that was started from this message, includes thread member object
+	Thread *Channel `json:"thread"`
 }
 
 func (m *Message) GetGuildID() int64 {
@@ -105,6 +127,22 @@ func (m *Message) GetChannelID() int64 {
 func (m *Message) Link() string {
 	return fmt.Sprintf("https://discord.com/channels/%v/%v/%v", m.GuildID, m.ChannelID, m.ID)
 }
+
+// MessageFlags is the flags of "message" (see MessageFlags* consts)
+// https://discord.com/developers/docs/resources/channel#message-object-message-flags
+type MessageFlags int
+
+// Valid MessageFlags values
+const (
+	MessageFlagsCrossPosted          MessageFlags = 1 << 0
+	MessageFlagsIsCrossPosted        MessageFlags = 1 << 1
+	MessageFlagsSupressEmbeds        MessageFlags = 1 << 2
+	MessageFlagsSourceMessageDeleted MessageFlags = 1 << 3
+	MessageFlagsUrgent               MessageFlags = 1 << 4
+	MessageFlagsHasThread            MessageFlags = 1 << 5
+	MessageFlagsEphemeral            MessageFlags = 1 << 6
+	MessageFlagsLoading              MessageFlags = 1 << 7
+)
 
 // File stores info about files you e.g. send in messages.
 type File struct {

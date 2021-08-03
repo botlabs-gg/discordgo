@@ -433,3 +433,37 @@ type InviteDelete struct {
 type InteractionCreate struct {
 	Interaction
 }
+
+// ThreadCreate is the data for a ThreadCreate event.
+type ThreadCreate struct {
+	*Channel
+}
+
+// ThreadUpdate is the data for a ThreadUpdate event.
+type ThreadUpdate struct {
+	*Channel
+}
+
+// ThreadDelete is the data for a ThreadDelete event.
+type ThreadDelete struct {
+	*Channel
+}
+
+type ThreadListSync struct {
+	GuildID    int64           `json:"guild_id,string"`
+	ChannelIDs IDSlice         `json:"channel_ids"`
+	Threads    []*Channel      `json:"threads"`
+	Members    []*ThreadMember `json:"members"`
+}
+
+type ThreadMemberUpdate struct {
+	*ThreadMember
+}
+
+type ThreadMembersUpdate struct {
+	ID                int64           `json:"id,string"`
+	GuildID           int64           `json:"guild_id,string"`
+	MemberCount       int             `json:"member_count"`
+	AddedMembers      []*ThreadMember `json:"added_members"`
+	RemovedMembersIDs IDSlice         `json:"removed_members_ids"`
+}
