@@ -2848,18 +2848,6 @@ type ThreadsResponseBody struct {
 	HasMore bool `json:"has_more"`
 }
 
-// ActiveThreads returns all active threads in the channel
-// GET /channels/{channel.id}/threads/active
-func (s *Session) ActiveThreads(channelID int64) (st *ThreadsResponseBody, err error) {
-	body, err := s.RequestWithBucketID("GET", EndpointChannelActiveThreads(channelID), nil, EndpointThreadMembers(0))
-	if err != nil {
-		return
-	}
-
-	err = unmarshal(body, &st)
-	return
-}
-
 // PublicArchivedThreads returns archived threads in the channel that are public
 // GET /channels/{channel.id}/threads/archived/public
 //
@@ -2951,15 +2939,6 @@ func (s *Session) JoinedPrivateArchivedThreads(channelID int64, before *time.Tim
 	return
 }
 
-// ThreadEdit edits the given thread
-// threadID  : The ID of a Thread
-// name       : The new name to assign the thread.
-func (s *Session) ThreadEdit(channelID int64, name string) (*Channel, error) {
-	return s.ThreadEditComplex(channelID, &ThreadEditData{
-		Name: name,
-	})
-}
-
 // ThreadEditComplex edits an existing thread, replacing the parameters entirely with ThreadEdit struct
 // threadID  : The ID of a Thread
 // data          : The thread struct to send
@@ -2973,8 +2952,8 @@ func (s *Session) ThreadEditComplex(threadID int64, data *ThreadEditData) (st *C
 	return
 }
 
-// ListActiveThreadsResponseBody is the returned data from ListActiveThreads
-type ListActiveThreadsResponseBody struct {
+// listActiveThreadsResponseBody is the returned data from ListActiveThreads
+type listActiveThreadsResponseBody struct {
 	Threads []*Channel      `json:"threads"`
 	Members []*ThreadMember `json:"members"`
 }
@@ -2982,12 +2961,21 @@ type ListActiveThreadsResponseBody struct {
 // ListActiveThreads returns all active threads in the guild,
 // including public and private threads.
 // Threads are ordered by their `id`, in descending order.
-func (s *Session) ListActiveThreads(guildID int64) (st *ListActiveThreadsResponseBody, err error) {
+func (s *Session) ListActiveThreads(guildID int64) (threads []*Channel, members []*ThreadMember, err error) {
 	body, err := s.RequestWithBucketID("GET", EndpointGuildActiveThreads(guildID), nil, EndpointGuildActiveThreads(guildID))
 	if err != nil {
 		return
 	}
 
-	err = unmarshal(body, &st)
+	response := &listActiveThreadsResponseBody{}
+
+	err = unmarshal(body, &response)
+	if err != nil {
+		return
+	}
+
+	threads = response.Threads
+	members = response.Members
+
 	return
 }

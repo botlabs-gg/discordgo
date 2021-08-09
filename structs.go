@@ -270,7 +270,7 @@ type ThreadMetadata struct {
 type ThreadMember struct {
 	ID            int64     `json:"id,string,omitempty"`
 	UserID        int64     `json:"user_id,string,omitempty"`
-	JoinTimeStamp Timestamp `json:"join_timestamp"`
+	JoinTimestamp Timestamp `json:"join_timestamp"`
 	Flags         int       `json:"flags"`
 }
 
@@ -283,8 +283,6 @@ type ThreadCreateData struct {
 	// after recent activity.
 	AutoArchiveDuration ArchiveDuration `json:"auto_archive_duration"`
 
-	// Defaults to `PRIVATE_THREAD` in order to match the behavior
-	// when thread documentation was first published.
 	Type ChannelType `json:"type"`
 }
 
