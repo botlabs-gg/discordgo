@@ -1228,6 +1228,16 @@ func easyjson692db02bDecodeGithubComJonas747Discordgo10(in *jlexer.Lexer, out *C
 			out.ParentID = int64(in.Int64Str())
 		case "rate_limit_per_user":
 			out.RateLimitPerUser = int(in.Int())
+		case "thread_metadata":
+			if in.IsNull() {
+				in.Skip()
+				out.ThreadMetadata = nil
+			} else {
+				if out.ThreadMetadata == nil {
+					out.ThreadMetadata = new(ThreadMetadata)
+				}
+				easyjson692db02bDecodeGithubComJonas747Discordgo13(in, out.ThreadMetadata)
+			}
 		default:
 			in.SkipRecursive()
 		}
@@ -1346,6 +1356,78 @@ func easyjson692db02bEncodeGithubComJonas747Discordgo10(out *jwriter.Writer, in 
 		const prefix string = ",\"rate_limit_per_user\":"
 		out.RawString(prefix)
 		out.Int(int(in.RateLimitPerUser))
+	}
+	{
+		const prefix string = ",\"thread_metadata\":"
+		out.RawString(prefix)
+		if in.ThreadMetadata == nil {
+			out.RawString("null")
+		} else {
+			easyjson692db02bEncodeGithubComJonas747Discordgo13(out, *in.ThreadMetadata)
+		}
+	}
+	out.RawByte('}')
+}
+func easyjson692db02bDecodeGithubComJonas747Discordgo13(in *jlexer.Lexer, out *ThreadMetadata) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeString()
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		case "archived":
+			out.Archived = bool(in.Bool())
+		case "auto_archive_duration":
+			out.AutoArchiveDuration = int(in.Int())
+		case "archive_timestamp":
+			out.ArchiveTimestamp = string(in.String())
+		case "locked":
+			out.Locked = bool(in.Bool())
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjson692db02bEncodeGithubComJonas747Discordgo13(out *jwriter.Writer, in ThreadMetadata) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	{
+		const prefix string = ",\"archived\":"
+		out.RawString(prefix[1:])
+		out.Bool(bool(in.Archived))
+	}
+	{
+		const prefix string = ",\"auto_archive_duration\":"
+		out.RawString(prefix)
+		out.Int(int(in.AutoArchiveDuration))
+	}
+	{
+		const prefix string = ",\"archive_timestamp\":"
+		out.RawString(prefix)
+		out.String(string(in.ArchiveTimestamp))
+	}
+	{
+		const prefix string = ",\"locked\":"
+		out.RawString(prefix)
+		out.Bool(bool(in.Locked))
 	}
 	out.RawByte('}')
 }

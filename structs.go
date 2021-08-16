@@ -1354,7 +1354,7 @@ type InteractionApplicationCommandCallbackData struct {
 }
 
 type MessageInteraction struct {
-	Id   int64           `json:"id,string"` // id of the interaction
+	ID   int64           `json:"id,string"` // id of the interaction
 	Kind InteractionType `json:"type"`      // the type of interaction
 	Name string          `json:"name"`      // the name of the ApplicationCommand
 	User User            `json:"user"`      // object the user who invoked the interaction
@@ -1365,4 +1365,12 @@ type ThreadMetadata struct {
 	AutoArchiveDuration int    `json:"auto_archive_duration"` // duration in minutes to automatically archive the thread after recent activity, can be set to: 60, 1440, 4320, 10080
 	ArchiveTimestamp    string `json:"archive_timestamp"`     // timestamp when the thread's archive status was last changed, used for calculating recent activity
 	Locked              bool   `json:"locked"`                // whether the thread is locked; when a thread is locked, only users with MANAGE_THREADS can unarchive it
+}
+
+// A thread member is used to indicate whether a user has joined a thread or not.
+type ThreadMember struct {
+	ID            int64     `json:"id,string"`      // the id of the thread (NOT INCLUDED IN GUILDCREATE)
+	UserID        int64     `json:"user_id,string"` // the id of the user (NOT INCLUDED IN GUILDCREATE)
+	JoinTimestamp Timestamp `json:"join_timestamp"` // the time the current user last joined the thread
+	Flags         int       `json:"flags"`          // any user-thread settings, currently only used for notifications
 }
