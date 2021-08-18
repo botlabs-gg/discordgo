@@ -42,9 +42,10 @@ const (
 	MessageTypeGuildDiscoveryGracePeriodFinalWarning   MessageType = 17
 	MessageTypeThreadCreated                           MessageType = 18
 	MessageTypeReply                                   MessageType = 19
-	MessageTypeApplicationCommand                      MessageType = 20
+	MessageTypeChatInputCommand                        MessageType = 20
 	MessageTypeThreadStarterMessage                    MessageType = 21
 	MessageTypeInviteReminder                          MessageType = 22
+	MessageTypeContextMenuCommand                      MessageType = 23
 )
 
 // A Message stores all data related to a specific Discord message.
