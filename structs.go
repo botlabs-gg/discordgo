@@ -1061,6 +1061,7 @@ type WebhookParams struct {
 	Embeds          []*MessageEmbed  `json:"embeds,omitempty"`
 	Flags           int64            `json:"flags,omitempty"`
 	AllowedMentions *AllowedMentions `json:"allowed_mentions,omitempty"`
+	ThreadID        int64            `json:"-"`
 }
 
 // MessageReaction stores the data for a message reaction.

@@ -2205,7 +2205,7 @@ func (s *Session) WebhookDeleteWithToken(webhookID int64, token string) (st *Web
 // WebhookExecute executes a webhook.
 // webhookID: The ID of a webhook.
 // token    : The auth token for the webhook
-func (s *Session) WebhookExecute(webhookID int64, token string, wait bool, threadID int64, data *WebhookParams) (err error) {
+func (s *Session) WebhookExecute(webhookID int64, token string, wait bool, data *WebhookParams) (err error) {
 	uri := EndpointWebhookToken(webhookID, token)
 
 	v := url.Values{}
@@ -2214,8 +2214,8 @@ func (s *Session) WebhookExecute(webhookID int64, token string, wait bool, threa
 		v.Set("wait", "true")
 	}
 
-	if threadID != 0 {
-		v.Set("thread_id", StrID(threadID))
+	if data.ThreadID != 0 {
+		v.Set("thread_id", StrID(data.ThreadID))
 	}
 
 	if len(v) > 0 {
@@ -2233,8 +2233,18 @@ func (s *Session) WebhookExecute(webhookID int64, token string, wait bool, threa
 func (s *Session) WebhookExecuteComplex(webhookID int64, token string, wait bool, data *WebhookParams) (m *Message, err error) {
 	uri := EndpointWebhookToken(webhookID, token)
 
+	v := url.Values{}
+
 	if wait {
-		uri += "?wait=true"
+		v.Set("wait", "true")
+	}
+
+	if data.ThreadID != 0 {
+		v.Set("thread_id", StrID(data.ThreadID))
+	}
+
+	if len(v) > 0 {
+		uri += "?" + v.Encode()
 	}
 
 	endpoint := uri
