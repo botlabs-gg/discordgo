@@ -191,7 +191,8 @@ var (
 	EndpointGuildActiveThreads           = func(gID int64) string { return EndpointGuilds + StrID(gID) + "/threads/active" }
 	EndpointChannelUsers                 = func(cID int64) string { return EndpointChannel(cID) + "/users" }
 	EndpointThreads                      = func(cID int64) string { return EndpointChannel(cID) + "/threads" }
-	EndpointThreadMembers                = func(cID int64) string { return EndpointChannel(cID) + "/thread-members/" }
+	EndpointThreadMembers                = func(cID int64) string { return EndpointChannel(cID) + "/thread-members" }
+	EndpointThreadMembersWithUserID      = func(cID int64, uID string) string { return EndpointChannel(cID) + "/thread-members/" + uID }
 	EndpointArchivedThreads              = func(cID int64) string { return EndpointThreads(cID) + "/archived" }
 	EndpointPublicArchivedThreads        = func(cID int64) string { return EndpointArchivedThreads(cID) + "/public" }
 	EndpointPrivateArchivedThreads       = func(cID int64) string { return EndpointArchivedThreads(cID) + "/private" }

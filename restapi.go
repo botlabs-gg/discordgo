@@ -2812,33 +2812,33 @@ func (s *Session) StartThreadWithoutMessage(channelID int64, data *ThreadCreateD
 // JoinThread joins the session user to a thread
 // PUT/channels/{channel.id}/thread-members/@me
 func (s *Session) JoinThread(channelID int64) (err error) {
-	_, err = s.RequestWithBucketID("PUT", EndpointThreadMembers(channelID)+"@me", nil, EndpointThreadMembers(0))
+	_, err = s.RequestWithBucketID("PUT", EndpointThreadMembersWithUserID(channelID, "@me"), nil, EndpointThreadMembersWithUserID(0, ""))
 	return
 }
 
 // AddUserToThread adds another user to a thread
 // PUT /channels/{channel.id}/thread-members/{user.id}
 func (s *Session) AddUserToThread(channelID, uID int64) (err error) {
-	_, err = s.RequestWithBucketID("PUT", EndpointThreadMembers(channelID)+StrID(uID), nil, EndpointThreadMembers(0))
+	_, err = s.RequestWithBucketID("PUT", EndpointThreadMembersWithUserID(channelID, StrID(uID)), nil, EndpointThreadMembersWithUserID(0, ""))
 	return
 }
 
 // LeaveThread removes the session user from a thread
 // DELETE /channels/{channel.id}/thread-members/@me
 func (s *Session) LeaveThread(channelID int64) (err error) {
-	_, err = s.RequestWithBucketID("DELETE", EndpointThreadMembers(channelID)+"@me", nil, EndpointThreadMembers(0))
+	_, err = s.RequestWithBucketID("DELETE", EndpointThreadMembersWithUserID(channelID, "@me"), nil, EndpointThreadMembersWithUserID(0, ""))
 	return
 }
 
 // RemoveUserFromThread removes another user from a thread
 // PUT /channels/{channel.id}/thread-members/{user.id}
 func (s *Session) RemoveUserFromThread(channelID, uID int64) (err error) {
-	_, err = s.RequestWithBucketID("DELETE", EndpointThreadMembers(channelID)+StrID(uID), nil, EndpointThreadMembers(0))
+	_, err = s.RequestWithBucketID("DELETE", EndpointThreadMembersWithUserID(channelID, StrID(uID)), nil, EndpointThreadMembersWithUserID(0, ""))
 	return
 }
 
 // TheadMembers lists the members of a thread
-// GET /channels/{channel.id}/threads-members
+// GET /channels/{channel.id}/thread-members
 func (s *Session) ThreadMembers(channelID int64) (st []*ThreadMember, err error) {
 	body, err := s.RequestWithBucketID("GET", EndpointThreadMembers(channelID), nil, EndpointThreadMembers(0))
 	if err != nil {
