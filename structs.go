@@ -411,9 +411,12 @@ type Guild struct {
 	Presences []*Presence `json:"presences"`
 
 	// A list of channels in the guild.
-	// This field is only present in GUILD_CREATE events and websocket
-	// update events, and thus is only present in state-cached guilds.
+	// This field is only present in GUILD_CREATE events
 	Channels []*Channel `json:"channels"`
+
+	// All active threads in the guild that current user has permission to view
+	// This field is only present in GUILD_CREATE events
+	Threads []*Channel `json:"threads"`
 
 	// A list of voice states for the guild.
 	// This field is only present in GUILD_CREATE events and websocket
