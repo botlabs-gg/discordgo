@@ -493,8 +493,8 @@ type ThreadMemberUpdate struct {
 
 // some user(s) were added to or removed from a thread
 type ThreadMembersUpdate struct {
-	ID             int64           `json:"id"`                 // snowflake	the id of the thread
-	GuildID        int64           `json:"guild_id"`           // snowflake	the id of the guild
+	ID             int64           `json:"id,string"`          // snowflake	the id of the thread
+	GuildID        int64           `json:"guild_id,string"`    // snowflake	the id of the guild
 	MemberCount    int             `json:"member_count"`       // integer	the approximate number of members in the thread, capped at 50
 	AddedMembers   []*ThreadMember `json:"added_members"`      // array of thread member objects	the users who were added to the thread
 	RemovedMembers IDSlice         `json:"removed_member_ids"` // array of snowflakes	the id of the users who were removed from the thread
