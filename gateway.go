@@ -31,7 +31,6 @@ import (
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/jonas747/gojay"
-	easyjson "github.com/mailru/easyjson"
 )
 
 var (
@@ -1194,10 +1193,6 @@ func (g *GatewayConnection) handleDispatch(e *Event) error {
 			}
 
 			g.secondPassGojayDecoder.Reset()
-		} else if eu, ok := e.Struct.(easyjson.Unmarshaler); ok {
-			if err := easyjson.Unmarshal(e.RawData, eu); err != nil {
-				g.log(LogError, "error unmarshalling %s (easyjson) event, %s, %s", e.Type, err, string(e.RawData))
-			}
 		} else {
 			g.secondPassBuf.Write(e.RawData)
 			if err := g.secondPassJsonDecoder.Decode(e.Struct); err != nil {

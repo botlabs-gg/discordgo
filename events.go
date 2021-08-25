@@ -9,7 +9,6 @@ import (
 // handled by AddHandler/EventHandler.
 // DO NOT ADD ANYTHING BUT EVENT HANDLER STRUCTS TO THIS FILE.
 //go:generate go run tools/cmd/eventhandlers/main.go
-//go:generate easyjson -no_std_marshalers events.go
 
 // Connect is the data for a Connect event.
 // This is a sythetic event and is not dispatched by Discord.
@@ -110,7 +109,6 @@ func (cp *ChannelPinsUpdate) GetChannelID() int64 {
 }
 
 // GuildCreate is the data for a GuildCreate event.
-//easyjson:json
 type GuildCreate struct {
 	*Guild
 }
@@ -264,7 +262,6 @@ type MessageReactionRemoveEmoji struct {
 type PresencesReplace []*Presence
 
 // PresenceUpdate is the data for a PresenceUpdate event.
-//easyjson:json
 type PresenceUpdate struct {
 	Presence
 	GuildID int64 `json:"guild_id,string"`
