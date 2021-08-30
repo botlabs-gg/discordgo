@@ -231,12 +231,12 @@ func (b *Bucket) Release(headers http.Header, lockCounter int64) error {
 	retryAfter := headers.Get("Retry-After")
 	if retryAfter != "" {
 
-		parsedAfter, err := strconv.ParseInt(retryAfter, 10, 64)
+		dur, err := parseResetAfterDur(retryAfter)
 		if err != nil {
 			return err
 		}
 
-		resetAt := time.Now().Add(time.Duration(parsedAfter) * time.Second)
+		resetAt := time.Now().Add(dur)
 
 		// Lock either this single bucket or all buckets
 		global := headers.Get("X-RateLimit-Global")
@@ -246,12 +246,12 @@ func (b *Bucket) Release(headers http.Header, lockCounter int64) error {
 			b.reset = resetAt
 		}
 	} else if resetAfter != "" {
-		resetAfterParsed, err := strconv.ParseFloat(resetAfter, 64)
+		dur, err := parseResetAfterDur(resetAfter)
 		if err != nil {
 			return err
 		}
 
-		b.reset = time.Now().Add(time.Millisecond * time.Duration(resetAfterParsed*1000))
+		b.reset = time.Now().Add(dur)
 	}
 
 	// Udpate remaining if header is present
@@ -265,4 +265,13 @@ func (b *Bucket) Release(headers http.Header, lockCounter int64) error {
 	}
 
 	return nil
+}
+
+func parseResetAfterDur(in string) (time.Duration, error) {
+	resetAfterParsed, err := strconv.ParseFloat(in, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return time.Millisecond * time.Duration(resetAfterParsed*1000), nil
 }

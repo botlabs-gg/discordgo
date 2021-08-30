@@ -168,10 +168,10 @@ func (s *Session) doRequest(method, urlStr, contentType string, b []byte, bucket
 
 		rl.Bucket = bucket.Key
 
-		s.log(LogInformational, "Rate Limiting %s, retry in %d", urlStr, rl.RetryAfter)
+		s.log(LogInformational, "Rate Limiting %s, retry in %s", urlStr, rl.RetryAfterDur())
 		s.handleEvent(rateLimitEventType, &RateLimit{TooManyRequests: &rl, URL: urlStr})
 
-		time.Sleep(rl.RetryAfter * time.Second)
+		time.Sleep(rl.RetryAfterDur())
 		// we can make the above smarter
 		// this method can cause longer delays than required
 		return nil, true, true, nil

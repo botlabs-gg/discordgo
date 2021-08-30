@@ -810,10 +810,14 @@ type Relationship struct {
 // A TooManyRequests struct holds information received from Discord
 // when receiving a HTTP 429 response.
 type TooManyRequests struct {
-	Bucket     string        `json:"bucket"`
-	Message    string        `json:"message"`
-	RetryAfter time.Duration `json:"retry_after"`
-	Global     bool          `json:"global"`
+	Bucket     string  `json:"bucket"`
+	Message    string  `json:"message"`
+	RetryAfter float64 `json:"retry_after"`
+	Global     bool    `json:"global"`
+}
+
+func (t *TooManyRequests) RetryAfterDur() time.Duration {
+	return time.Duration(t.RetryAfter*1000) * time.Millisecond
 }
 
 // A ReadState stores data on the read state of channels.
