@@ -828,14 +828,12 @@ func (s *Session) UpdateListeningStatus(game string) (err error) {
 }
 
 func (s *Session) UpdateStatusComplex(usd UpdateStatusData) (err error) {
-	s.GatewayManager.mu.RLock()
-	defer s.GatewayManager.mu.RUnlock()
-
-	if s.GatewayManager.currentConnection == nil {
-		return errors.New("No gateway connection")
+	curConn := s.GatewayManager.GetCurrentConnection()
+	if curConn == nil {
+		return errors.New("no gateway connection")
 	}
 
-	s.GatewayManager.currentConnection.UpdateStatusComplex(usd)
+	curConn.UpdateStatusComplex(usd)
 	return nil
 }
 
