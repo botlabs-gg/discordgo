@@ -468,7 +468,6 @@ func (v *VoiceConnection) onEvent(message []byte) {
 		v.log(LogDebug, "unknown voice operation, %d, %s", e.Operation, string(e.RawData))
 	}
 
-	return
 }
 
 type voiceHeartbeatOp struct {
