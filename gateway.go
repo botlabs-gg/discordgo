@@ -904,13 +904,7 @@ func (g *GatewayConnection) open(sessionID string, sequence int64) error {
 // startWorkers starts the background workers for reading, receiving and heartbeating
 func (g *GatewayConnection) startWorkers() error {
 	// The writer
-	writerWorker := &wsWriter{
-		conn:           g.conn,
-		session:        g.manager.session,
-		closer:         g.stopWorkers,
-		incoming:       make(chan interface{}),
-		sendCloseQueue: make(chan []byte),
-	}
+	writerWorker := newWSWriter(g.conn, g.manager.session, g.stopWorkers)
 	g.writer = writerWorker
 	go writerWorker.Run()
 
@@ -1250,6 +1244,8 @@ func (g *GatewayConnection) handleReady(r *Ready) {
 	g.status = GatewayStatusReady
 	g.mu.Unlock()
 
+	g.writer.readyRecv <- true
+
 	g.manager.SetSessionInfo(r.SessionID, 0)
 }
 
@@ -1312,7 +1308,7 @@ func (g *GatewayConnection) identify() error {
 }
 
 func (g *GatewayConnection) resume(sessionID string, sequence int64) error {
-	op := &outgoingEvent{
+	op := outgoingEvent{
 		Operation: GatewayOPResume,
 		Data: &resumeData{
 			Token:     g.manager.session.Token,
@@ -1333,7 +1329,7 @@ func (g *GatewayConnection) resume(sessionID string, sequence int64) error {
 }
 
 func (g *GatewayConnection) RequestGuildMembers(d *RequestGuildMembersData) {
-	op := &outgoingEvent{
+	op := outgoingEvent{
 		Operation: GatewayOPRequestGuildMembers,
 		Data:      d,
 	}
