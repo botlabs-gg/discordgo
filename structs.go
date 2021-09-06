@@ -172,6 +172,10 @@ const (
 	ChannelTypeGuildStageVoice    ChannelType = 13 // a voice channel for hosting events with an audience
 )
 
+func (t ChannelType) IsThread() bool {
+	return t == ChannelTypeGuildPrivateThread || t == ChannelTypeGuildPublicThread
+}
+
 // A Channel holds all data related to an individual Discord channel.
 type Channel struct {
 	// The ID of the channel.
