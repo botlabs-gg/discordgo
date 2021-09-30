@@ -246,10 +246,10 @@ func CreateEndpoints(base string) {
 	EndpointGuildChannels = func(gID int64) string { return EndpointGuilds + StrID(gID) + "/channels" }
 	EndpointGuildMembers = func(gID int64) string { return EndpointGuilds + StrID(gID) + "/members" }
 	EndpointGuildMember = func(gID int64, uID int64) string { return EndpointGuilds + StrID(gID) + "/members/" + StrID(uID) }
-	EndpointGuildMemberAvatar = func(gID, uID int64, aID string) string {
+	EndpointGuildMemberAvatar = func(gID int64, uID int64, aID string) string {
 		return EndpointCDNGuilds + StrID(gID) + "/users/" + StrID(uID) + "/avatars/" + aID + ".png"
 	}
-	EndpointGuildMemberAvatarAnimated = func(gID, uID int64, aID string) string {
+	EndpointGuildMemberAvatarAnimated = func(gID int64, uID int64, aID string) string {
 		return EndpointCDNGuilds + StrID(gID) + "/users/" + StrID(uID) + "/avatars/" + aID + ".gif"
 	}
 	EndpointGuildMemberMe = func(gID int64) string { return EndpointGuilds + StrID(gID) + "/members/@me" }
