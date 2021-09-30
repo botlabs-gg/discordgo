@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -749,6 +750,9 @@ type Member struct {
 	// The nickname of the member, if they have one.
 	Nick string `json:"nick"`
 
+	// The guild avatar hash of the member, if they have one.
+	Avatar string `json:"avatar"`
+
 	// Whether the member is deafened at a guild level.
 	Deaf bool `json:"deaf"`
 
@@ -764,6 +768,24 @@ type Member struct {
 
 func (m *Member) GetGuildID() int64 {
 	return m.GuildID
+}
+
+func (m *Member) AvatarURL(size string) string {
+	var URL string
+	u := m.User
+
+	if m.Avatar == "" {
+		return URL
+	} else if strings.HasPrefix(m.Avatar, "a_") {
+		URL = EndpointGuildMemberAvatarAnimated(m.GuildID, u.ID, m.Avatar)
+	} else {
+		URL = EndpointGuildMemberAvatar(m.GuildID, u.ID, m.Avatar)
+	}
+
+	if size != "" {
+		return URL + "?size=" + size
+	}
+	return URL
 }
 
 // A Settings stores data for a specific users Discord client settings.
