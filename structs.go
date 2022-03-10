@@ -772,10 +772,15 @@ func (m *Member) GetGuildID() int64 {
 
 func (m *Member) AvatarURL(size string) string {
 	var URL string
+
+	if m == nil {
+		return "Member not found"
+	}
+
 	u := m.User
 
 	if m.Avatar == "" {
-		return URL
+		return u.AvatarURL(size)
 	} else if strings.HasPrefix(m.Avatar, "a_") {
 		URL = EndpointGuildMemberAvatarAnimated(m.GuildID, u.ID, m.Avatar)
 	} else {
