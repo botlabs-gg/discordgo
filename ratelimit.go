@@ -232,26 +232,12 @@ func (b *Bucket) Release(headers http.Header, lockCounter int64) error {
 	retryAfter := headers.Get("Retry-After")
 	if retryAfter != "" {
 
-		parsedAfter, err := strconv.ParseInt(retryAfter, 10, 64)
+		dur, err := parseResetAfterDur(retryAfter)
 		if err != nil {
 			return err
 		}
 
-		var afterD time.Duration
-
-		// This is a fix for cloudflare sending ratelimits in seconds while discord in milliseconds
-		// This can be removed for gateway v8
-		if strings.Contains(headers.Get("via"), "1.1 google") {
-			afterD = time.Duration(parsedAfter) * time.Millisecond
-		} else {
-			afterD = time.Duration(parsedAfter) * time.Second
-		}
-
-		if afterD > time.Second*1000 {
-			logHighRatelimit(afterD, b.Key, headers)
-		}
-
-		resetAt := time.Now().Add(afterD)
+		resetAt := time.Now().Add(dur)
 
 		// Lock either this single bucket or all buckets
 		global := headers.Get("X-RateLimit-Global")
@@ -261,17 +247,11 @@ func (b *Bucket) Release(headers http.Header, lockCounter int64) error {
 			b.reset = resetAt
 		}
 	} else if resetAfter != "" {
-		resetAfterParsed, err := strconv.ParseFloat(resetAfter, 64)
+		dur, err := parseResetAfterDur(resetAfter)
 		if err != nil {
 			return err
 		}
-
-		dur := time.Millisecond * time.Duration(resetAfterParsed*1000)
-
-		if dur > time.Second*1000 {
-			logHighRatelimit(dur, b.Key, headers)
-		}
-
+    
 		b.reset = time.Now().Add(dur)
 	}
 
@@ -288,7 +268,11 @@ func (b *Bucket) Release(headers http.Header, lockCounter int64) error {
 	return nil
 }
 
-func logHighRatelimit(limit time.Duration, bucket string, headers http.Header) {
-	serialized, _ := json.Marshal(headers)
-	msglog(LogError, 2, "very high ratelimit on %s: %s, headers: %s", bucket, limit, string(serialized))
+func parseResetAfterDur(in string) (time.Duration, error) {
+	resetAfterParsed, err := strconv.ParseFloat(in, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return time.Millisecond * time.Duration(resetAfterParsed*1000), nil
 }

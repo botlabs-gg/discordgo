@@ -168,10 +168,10 @@ func (s *Session) doRequest(method, urlStr, contentType string, b []byte, bucket
 
 		rl.Bucket = bucket.Key
 
-		s.log(LogInformational, "Rate Limiting %s, retry in %d", urlStr, rl.RetryAfter)
+		s.log(LogInformational, "Rate Limiting %s, retry in %s", urlStr, rl.RetryAfterDur())
 		s.handleEvent(rateLimitEventType, &RateLimit{TooManyRequests: &rl, URL: urlStr})
 
-		time.Sleep(rl.RetryAfter * time.Millisecond)
+		time.Sleep(rl.RetryAfterDur())
 		// we can make the above smarter
 		// this method can cause longer delays than required
 		return nil, true, true, nil
@@ -233,7 +233,6 @@ func (s *Session) innerDoRequest(method, urlStr, contentType string, b []byte, b
 
 	// TODO: Make a configurable static variable.
 	req.Header.Set("User-Agent", fmt.Sprintf("DiscordBot (https://github.com/jonas747/discordgo, v%s)", VERSION))
-	req.Header.Set("X-RateLimit-Precision", "millisecond")
 
 	// for things such as stats collecting in the roundtripper for example
 	ctx := context.WithValue(req.Context(), CtxKeyRatelimitBucket, bucket)
@@ -551,7 +550,7 @@ func (s *Session) UserGuildSettingsEdit(guildID int64, settings *UserGuildSettin
 //
 // NOTE: This function is now deprecated and will be removed in the future.
 // Please see the same function inside state.go
-func (s *Session) UserChannelPermissions(userID, channelID int64) (apermissions int, err error) {
+func (s *Session) UserChannelPermissions(userID, channelID int64) (apermissions int64, err error) {
 	// Try to just get permissions from state.
 	apermissions, err = s.State.UserChannelPermissions(userID, channelID)
 	if err == nil {
@@ -593,7 +592,7 @@ func (s *Session) UserChannelPermissions(userID, channelID int64) (apermissions 
 
 // Calculates the permissions for a member.
 // https://support.discordapp.com/hc/en-us/articles/206141927-How-is-the-permission-hierarchy-structured-
-func MemberPermissions(guild *Guild, channel *Channel, member *Member) (apermissions int) {
+func MemberPermissions(guild *Guild, channel *Channel, member *Member) (apermissions int64) {
 	userID := member.User.ID
 
 	if userID == guild.OwnerID {
@@ -619,6 +618,8 @@ func MemberPermissions(guild *Guild, channel *Channel, member *Member) (apermiss
 
 	if apermissions&PermissionAdministrator == PermissionAdministrator {
 		apermissions |= PermissionAll
+		// Administrator overwrites everything, so no point in checking further
+		return
 	}
 
 	if channel != nil {
@@ -631,13 +632,13 @@ func MemberPermissions(guild *Guild, channel *Channel, member *Member) (apermiss
 			}
 		}
 
-		denies := 0
-		allows := 0
+		denies := int64(0)
+		allows := int64(0)
 
 		// Member overwrites can override role overrides, so do two passes
 		for _, overwrite := range channel.PermissionOverwrites {
 			for _, roleID := range member.Roles {
-				if overwrite.Type == "role" && roleID == overwrite.ID {
+				if overwrite.Type == PermissionOverwriteTypeRole && roleID == overwrite.ID {
 					denies |= overwrite.Deny
 					allows |= overwrite.Allow
 					break
@@ -649,16 +650,12 @@ func MemberPermissions(guild *Guild, channel *Channel, member *Member) (apermiss
 		apermissions |= allows
 
 		for _, overwrite := range channel.PermissionOverwrites {
-			if overwrite.Type == "member" && overwrite.ID == userID {
+			if overwrite.Type == PermissionOverwriteTypeMember && overwrite.ID == userID {
 				apermissions &= ^overwrite.Deny
 				apermissions |= overwrite.Allow
 				break
 			}
 		}
-	}
-
-	if apermissions&PermissionAdministrator == PermissionAdministrator {
-		apermissions |= PermissionAllChannel
 	}
 
 	return apermissions
@@ -820,7 +817,7 @@ func (s *Session) GuildBanCreateWithReason(guildID, userID int64, reason string,
 
 	data := make(map[string]interface{})
 	if days > 0 {
-		data["delete-message-days"] = days
+		data["delete_message_days"] = days
 	}
 
 	if reason != "" {
@@ -1160,7 +1157,7 @@ func (s *Session) GuildRoleCreateComplex(guildID int64, roleCreate RoleCreate) (
 // hoist     : Whether to display the role's users separately.
 // perm      : The permissions for the role.
 // mention   : Whether this role is mentionable
-func (s *Session) GuildRoleEdit(guildID, roleID int64, name string, color int, hoist bool, perm int, mention bool) (st *Role, err error) {
+func (s *Session) GuildRoleEdit(guildID, roleID int64, name string, color int, hoist bool, perm int64, mention bool) (st *Role, err error) {
 
 	// Prevent sending a color int that is too big.
 	if color > 0xFFFFFF {
@@ -1169,11 +1166,11 @@ func (s *Session) GuildRoleEdit(guildID, roleID int64, name string, color int, h
 	}
 
 	data := struct {
-		Name        string `json:"name"`        // The role's name (overwrites existing)
-		Color       int    `json:"color"`       // The color the role should have (as a decimal, not hex)
-		Hoist       bool   `json:"hoist"`       // Whether to display the role's users separately
-		Permissions int    `json:"permissions"` // The overall permissions number of the role (overwrites existing)
-		Mentionable bool   `json:"mentionable"` // Whether this role is mentionable
+		Name        string `json:"name"`               // The role's name (overwrites existing)
+		Color       int    `json:"color"`              // The color the role should have (as a decimal, not hex)
+		Hoist       bool   `json:"hoist"`              // Whether to display the role's users separately
+		Permissions int64  `json:"permissions,string"` // The overall permissions number of the role (overwrites existing)
+		Mentionable bool   `json:"mentionable"`        // Whether this role is mentionable
 	}{name, color, hoist, perm, mention}
 
 	body, err := s.RequestWithBucketID("PATCH", EndpointGuildRole(guildID, roleID), data, EndpointGuildRole(guildID, 0))
@@ -1896,13 +1893,13 @@ func (s *Session) ChannelInviteCreate(channelID int64, i Invite) (st *Invite, er
 // ChannelPermissionSet creates a Permission Override for the given channel.
 // NOTE: This func name may changed.  Using Set instead of Create because
 // you can both create a new override or update an override with this function.
-func (s *Session) ChannelPermissionSet(channelID, targetID int64, targetType string, allow, deny int) (err error) {
+func (s *Session) ChannelPermissionSet(channelID, targetID int64, targetType PermissionOverwriteType, allow, deny int64) (err error) {
 
 	data := struct {
-		ID    int64  `json:"id,string"`
-		Type  string `json:"type"`
-		Allow int    `json:"allow"`
-		Deny  int    `json:"deny"`
+		ID    int64                   `json:"id,string"`
+		Type  PermissionOverwriteType `json:"type,string"`
+		Allow int64                   `json:"allow"`
+		Deny  int64                   `json:"deny"`
 	}{targetID, targetType, allow, deny}
 
 	_, err = s.RequestWithBucketID("PUT", EndpointChannelPermission(channelID, targetID), data, EndpointChannelPermission(channelID, 0))

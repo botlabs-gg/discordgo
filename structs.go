@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -159,14 +160,22 @@ type ChannelType int
 
 // Block contains known ChannelType values
 const (
-	ChannelTypeGuildText ChannelType = iota
-	ChannelTypeDM
-	ChannelTypeGuildVoice
-	ChannelTypeGroupDM
-	ChannelTypeGuildCategory
-	ChannelTypeGuildNews
-	ChannelTypeGuildStore
+	ChannelTypeGuildText          ChannelType = 0  // a text channel within a server
+	ChannelTypeDM                 ChannelType = 1  // a direct message between users
+	ChannelTypeGuildVoice         ChannelType = 2  // a voice channel within a server
+	ChannelTypeGroupDM            ChannelType = 3  // a direct message between multiple users
+	ChannelTypeGuildCategory      ChannelType = 4  // an organizational category that contains up to 50 channels
+	ChannelTypeGuildNews          ChannelType = 5  // a channel that users can follow and crosspost into their own server
+	ChannelTypeGuildStore         ChannelType = 6  // a channel in which game developers can sell their game on Discord
+	ChannelTypeGuildNewsThread    ChannelType = 10 // a temporary sub-channel within a GUILD_NEWS channel
+	ChannelTypeGuildPublicThread  ChannelType = 11 // a temporary sub-channel within a GUILD_TEXT channel
+	ChannelTypeGuildPrivateThread ChannelType = 12 // a temporary sub-channel within a GUILD_TEXT channel that is only viewable by those invited and those with the MANAGE_THREADS permission
+	ChannelTypeGuildStageVoice    ChannelType = 13 // a voice channel for hosting events with an audience
 )
+
+func (t ChannelType) IsThread() bool {
+	return t == ChannelTypeGuildPrivateThread || t == ChannelTypeGuildPublicThread
+}
 
 // A Channel holds all data related to an individual Discord channel.
 type Channel struct {
@@ -219,6 +228,8 @@ type Channel struct {
 	ParentID int64 `json:"parent_id,string"`
 
 	RateLimitPerUser int `json:"rate_limit_per_user"`
+
+	ThreadMetadata *ThreadMetadata `json:"thread_metadata"`
 }
 
 func (c *Channel) GetChannelID() int64 {
@@ -249,7 +260,7 @@ type ChannelEdit struct {
 
 type RoleCreate struct {
 	Name        string `json:"name,omitempty"`
-	Permissions string `json:"permissions,omitempty"`
+	Permissions int64  `json:"permissions,string,omitempty"`
 	Color       int32  `json:"color,omitempty"`
 	Hoist       bool   `json:"hoist"`
 	Mentionable bool   `json:"mentionable"`
@@ -257,11 +268,18 @@ type RoleCreate struct {
 
 // A PermissionOverwrite holds permission overwrite data for a Channel
 type PermissionOverwrite struct {
-	ID    int64  `json:"id,string"`
-	Type  string `json:"type"`
-	Deny  int    `json:"deny"`
-	Allow int    `json:"allow"`
+	ID    int64                   `json:"id,string"`
+	Type  PermissionOverwriteType `json:"type"`
+	Deny  int64                   `json:"deny,string"`
+	Allow int64                   `json:"allow,string"`
 }
+
+type PermissionOverwriteType int
+
+const (
+	PermissionOverwriteTypeRole   PermissionOverwriteType = 0
+	PermissionOverwriteTypeMember PermissionOverwriteType = 1
+)
 
 // Emoji struct holds data related to Emoji's
 type Emoji struct {
@@ -350,9 +368,6 @@ type Guild struct {
 	// The ID of the AFK voice channel.
 	AfkChannelID int64 `json:"afk_channel_id,string"`
 
-	// The ID of the embed channel ID, used for embed widgets.
-	EmbedChannelID int64 `json:"embed_channel_id,string"`
-
 	// The user ID of the owner of the guild.
 	OwnerID int64 `json:"owner_id,string"`
 
@@ -374,9 +389,6 @@ type Guild struct {
 
 	// The verification level required for the guild.
 	VerificationLevel VerificationLevel `json:"verification_level"`
-
-	// Whether the guild has embedding enabled.
-	EmbedEnabled bool `json:"embed_enabled"`
 
 	// Whether the guild is considered large. This is
 	// determined by a member threshold in the identify packet,
@@ -404,9 +416,12 @@ type Guild struct {
 	Presences []*Presence `json:"presences"`
 
 	// A list of channels in the guild.
-	// This field is only present in GUILD_CREATE events and websocket
-	// update events, and thus is only present in state-cached guilds.
+	// This field is only present in GUILD_CREATE events
 	Channels []*Channel `json:"channels"`
+
+	// All active threads in the guild that current user has permission to view
+	// This field is only present in GUILD_CREATE events
+	Threads []*Channel `json:"threads"`
 
 	// A list of voice states for the guild.
 	// This field is only present in GUILD_CREATE events and websocket
@@ -472,7 +487,7 @@ type UserGuild struct {
 	Name        string `json:"name"`
 	Icon        string `json:"icon"`
 	Owner       bool   `json:"owner"`
-	Permissions int    `json:"permissions"`
+	Permissions int64  `json:"permissions,string"`
 }
 
 // A GuildParams stores all the data needed to update discord guild settings
@@ -515,7 +530,7 @@ type Role struct {
 	// The permissions of the role on the guild (doesn't include channel overrides).
 	// This is a combination of bit masks; the presence of a certain permission can
 	// be checked by performing a bitwise AND between this int and the permission.
-	Permissions int `json:"permissions"`
+	Permissions int64 `json:"permissions,string"`
 }
 
 // Mention returns a string which mentions the role
@@ -553,16 +568,10 @@ type VoiceState struct {
 
 // A Presence stores the online, offline, or idle and game status of Guild members.
 type Presence struct {
-	User   *User   `json:"user"`
-	Status Status  `json:"status"`
-	Game   *Game   `json:"game"`
-	Nick   string  `json:"nick"`
-	Roles  IDSlice `json:"roles,string"`
+	User   *User  `json:"user"`
+	Status Status `json:"status"`
 
 	Activities Activities `json:"activities"`
-
-	// not decoded
-	Since int64 `json:"since"`
 }
 
 // implement gojay.UnmarshalerJSONObject
@@ -574,13 +583,6 @@ func (p *Presence) UnmarshalJSONObject(dec *gojay.Decoder, key string) error {
 		err = dec.Object(p.User)
 	case "status":
 		err = dec.String((*string)(&p.Status))
-	case "game":
-		p.Game = &Game{}
-		err = dec.Object(p.Game)
-	case "nick":
-		err = dec.String(&p.Nick)
-	case "roles":
-		err = dec.DecodeArray(&p.Roles)
 	case "activities":
 		err = dec.DecodeArray(&p.Activities)
 	default:
@@ -748,6 +750,9 @@ type Member struct {
 	// The nickname of the member, if they have one.
 	Nick string `json:"nick"`
 
+	// The guild avatar hash of the member, if they have one.
+	Avatar string `json:"avatar"`
+
 	// Whether the member is deafened at a guild level.
 	Deaf bool `json:"deaf"`
 
@@ -763,6 +768,29 @@ type Member struct {
 
 func (m *Member) GetGuildID() int64 {
 	return m.GuildID
+}
+
+func (m *Member) AvatarURL(size string) string {
+	var URL string
+
+	if m == nil {
+		return "Member not found"
+	}
+
+	u := m.User
+
+	if m.Avatar == "" {
+		return u.AvatarURL(size)
+	} else if strings.HasPrefix(m.Avatar, "a_") {
+		URL = EndpointGuildMemberAvatarAnimated(m.GuildID, u.ID, m.Avatar)
+	} else {
+		URL = EndpointGuildMemberAvatar(m.GuildID, u.ID, m.Avatar)
+	}
+
+	if size != "" {
+		return URL + "?size=" + size
+	}
+	return URL
 }
 
 // A Settings stores data for a specific users Discord client settings.
@@ -813,10 +841,14 @@ type Relationship struct {
 // A TooManyRequests struct holds information received from Discord
 // when receiving a HTTP 429 response.
 type TooManyRequests struct {
-	Bucket     string        `json:"bucket"`
-	Message    string        `json:"message"`
-	RetryAfter time.Duration `json:"retry_after"`
-	Global     bool          `json:"global"`
+	Bucket     string  `json:"bucket"`
+	Message    string  `json:"message"`
+	RetryAfter float64 `json:"retry_after"`
+	Global     bool    `json:"global"`
+}
+
+func (t *TooManyRequests) RetryAfterDur() time.Duration {
+	return time.Duration(t.RetryAfter*1000) * time.Millisecond
 }
 
 // A ReadState stores data on the read state of channels.
@@ -1009,80 +1041,6 @@ type SessionStartLimit struct {
 	Remaining  int   `json:"remaining"`
 	ResetAfter int64 `json:"reset_after"`
 }
-
-// Constants for the different bit offsets of text channel permissions
-const (
-	PermissionReadMessages = 1 << (iota + 10)
-	PermissionSendMessages
-	PermissionSendTTSMessages
-	PermissionManageMessages
-	PermissionEmbedLinks
-	PermissionAttachFiles
-	PermissionReadMessageHistory
-	PermissionMentionEveryone
-	PermissionUseExternalEmojis
-)
-
-// Constants for the different bit offsets of voice permissions
-const (
-	PermissionVoiceConnect = 1 << (iota + 20)
-	PermissionVoiceSpeak
-	PermissionVoiceMuteMembers
-	PermissionVoiceDeafenMembers
-	PermissionVoiceMoveMembers
-	PermissionVoiceUseVAD
-)
-
-// Constants for general management.
-const (
-	PermissionChangeNickname = 1 << (iota + 26)
-	PermissionManageNicknames
-	PermissionManageRoles
-	PermissionManageWebhooks
-	PermissionManageEmojis
-)
-
-// Constants for the different bit offsets of general permissions
-const (
-	PermissionCreateInstantInvite = 1 << iota
-	PermissionKickMembers
-	PermissionBanMembers
-	PermissionAdministrator
-	PermissionManageChannels
-	PermissionManageServer
-	PermissionAddReactions
-	PermissionViewAuditLogs
-
-	PermissionAllText = PermissionReadMessages |
-		PermissionSendMessages |
-		PermissionSendTTSMessages |
-		PermissionManageMessages |
-		PermissionEmbedLinks |
-		PermissionAttachFiles |
-		PermissionReadMessageHistory |
-		PermissionMentionEveryone
-	PermissionAllVoice = PermissionVoiceConnect |
-		PermissionVoiceSpeak |
-		PermissionVoiceMuteMembers |
-		PermissionVoiceDeafenMembers |
-		PermissionVoiceMoveMembers |
-		PermissionVoiceUseVAD
-	PermissionAllChannel = PermissionAllText |
-		PermissionAllVoice |
-		PermissionCreateInstantInvite |
-		PermissionManageRoles |
-		PermissionManageChannels |
-		PermissionAddReactions |
-		PermissionViewAuditLogs |
-		PermissionManageWebhooks
-	PermissionAll = PermissionAllChannel |
-		PermissionKickMembers |
-		PermissionBanMembers |
-		PermissionManageServer |
-		PermissionAdministrator |
-		PermissionManageNicknames |
-		PermissionManageEmojis
-)
 
 // Block contains Discord JSON Error Response codes
 const (
@@ -1434,8 +1392,23 @@ type InteractionApplicationCommandCallbackData struct {
 }
 
 type MessageInteraction struct {
-	Id   int64           `json:"id,string"` // id of the interaction
+	ID   int64           `json:"id,string"` // id of the interaction
 	Kind InteractionType `json:"type"`      // the type of interaction
 	Name string          `json:"name"`      // the name of the ApplicationCommand
 	User User            `json:"user"`      // object the user who invoked the interaction
+}
+
+type ThreadMetadata struct {
+	Archived            bool   `json:"archived"`              // whether the thread is archived
+	AutoArchiveDuration int    `json:"auto_archive_duration"` // duration in minutes to automatically archive the thread after recent activity, can be set to: 60, 1440, 4320, 10080
+	ArchiveTimestamp    string `json:"archive_timestamp"`     // timestamp when the thread's archive status was last changed, used for calculating recent activity
+	Locked              bool   `json:"locked"`                // whether the thread is locked; when a thread is locked, only users with MANAGE_THREADS can unarchive it
+}
+
+// A thread member is used to indicate whether a user has joined a thread or not.
+type ThreadMember struct {
+	ID            int64     `json:"id,string"`      // the id of the thread (NOT INCLUDED IN GUILDCREATE)
+	UserID        int64     `json:"user_id,string"` // the id of the user (NOT INCLUDED IN GUILDCREATE)
+	JoinTimestamp Timestamp `json:"join_timestamp"` // the time the current user last joined the thread
+	Flags         int       `json:"flags"`          // any user-thread settings, currently only used for notifications
 }

@@ -31,7 +31,6 @@ import (
 	"github.com/gobwas/ws"
 	"github.com/gobwas/ws/wsutil"
 	"github.com/jonas747/gojay"
-	easyjson "github.com/mailru/easyjson"
 )
 
 var (
@@ -829,14 +828,12 @@ func (s *Session) UpdateListeningStatus(game string) (err error) {
 }
 
 func (s *Session) UpdateStatusComplex(usd UpdateStatusData) (err error) {
-	s.GatewayManager.mu.RLock()
-	defer s.GatewayManager.mu.RUnlock()
-
-	if s.GatewayManager.currentConnection == nil {
-		return errors.New("No gateway connection")
+	curConn := s.GatewayManager.GetCurrentConnection()
+	if curConn == nil {
+		return errors.New("no gateway connection")
 	}
 
-	s.GatewayManager.currentConnection.UpdateStatusComplex(usd)
+	curConn.UpdateStatusComplex(usd)
 	return nil
 }
 
@@ -905,13 +902,7 @@ func (g *GatewayConnection) open(sessionID string, sequence int64) error {
 // startWorkers starts the background workers for reading, receiving and heartbeating
 func (g *GatewayConnection) startWorkers() error {
 	// The writer
-	writerWorker := &wsWriter{
-		conn:           g.conn,
-		session:        g.manager.session,
-		closer:         g.stopWorkers,
-		incoming:       make(chan interface{}),
-		sendCloseQueue: make(chan []byte),
-	}
+	writerWorker := newWSWriter(g.conn, g.manager.session, g.stopWorkers)
 	g.writer = writerWorker
 	go writerWorker.Run()
 
@@ -1194,10 +1185,6 @@ func (g *GatewayConnection) handleDispatch(e *Event) error {
 			}
 
 			g.secondPassGojayDecoder.Reset()
-		} else if eu, ok := e.Struct.(easyjson.Unmarshaler); ok {
-			if err := easyjson.Unmarshal(e.RawData, eu); err != nil {
-				g.log(LogError, "error unmarshalling %s (easyjson) event, %s, %s", e.Type, err, string(e.RawData))
-			}
 		} else {
 			g.secondPassBuf.Write(e.RawData)
 			if err := g.secondPassJsonDecoder.Decode(e.Struct); err != nil {
@@ -1254,6 +1241,8 @@ func (g *GatewayConnection) handleReady(r *Ready) {
 	g.sessionID = r.SessionID
 	g.status = GatewayStatusReady
 	g.mu.Unlock()
+
+	g.writer.readyRecv <- true
 
 	g.manager.SetSessionInfo(r.SessionID, 0)
 }
@@ -1317,7 +1306,7 @@ func (g *GatewayConnection) identify() error {
 }
 
 func (g *GatewayConnection) resume(sessionID string, sequence int64) error {
-	op := &outgoingEvent{
+	op := outgoingEvent{
 		Operation: GatewayOPResume,
 		Data: &resumeData{
 			Token:     g.manager.session.Token,
@@ -1338,7 +1327,7 @@ func (g *GatewayConnection) resume(sessionID string, sequence int64) error {
 }
 
 func (g *GatewayConnection) RequestGuildMembers(d *RequestGuildMembersData) {
-	op := &outgoingEvent{
+	op := outgoingEvent{
 		Operation: GatewayOPRequestGuildMembers,
 		Data:      d,
 	}

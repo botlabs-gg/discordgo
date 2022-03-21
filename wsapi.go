@@ -14,14 +14,28 @@ import (
 type wsWriter struct {
 	session *Session
 
-	conn           net.Conn
-	closer         chan interface{}
-	incoming       chan interface{}
-	sendCloseQueue chan []byte
+	conn               net.Conn
+	closer             chan interface{}
+	incoming           chan outgoingEvent
+	sendCloseQueue     chan []byte
+	readyRecv          chan bool
+	waitingForIdentify bool
+	queuedEvents       []*outgoingEvent
 
 	writer *wsutil.Writer
 
 	sendRatelimiter chan bool
+}
+
+func newWSWriter(conn net.Conn, session *Session, closer chan interface{}) *wsWriter {
+	return &wsWriter{
+		conn:           conn,
+		session:        session,
+		closer:         closer,
+		incoming:       make(chan outgoingEvent, 10),
+		sendCloseQueue: make(chan []byte),
+		readyRecv:      make(chan bool),
+	}
 }
 
 func (w *wsWriter) Run() {
@@ -41,20 +55,34 @@ func (w *wsWriter) Run() {
 			}
 			return
 		case msg := <-w.incoming:
-			var err error
-			switch t := msg.(type) {
-			case []byte:
-				err = w.writeRaw(t)
-			default:
-				err = w.writeJson(t)
+			if w.waitingForIdentify {
+				w.queuedEvents = append(w.queuedEvents, &msg)
+				continue
 			}
 
+			if msg.Operation == GatewayOPIdentify {
+				w.waitingForIdentify = true
+			}
+
+			err := w.writeJson(msg)
 			if err != nil {
 				w.session.log(LogError, "Error writing to gateway: %s", err.Error())
 				return
 			}
 		case body := <-w.sendCloseQueue:
 			w.sendClose(body)
+
+		case <-w.readyRecv:
+			w.waitingForIdentify = false
+			for _, msg := range w.queuedEvents {
+				err := w.writeJson(msg)
+				if err != nil {
+					w.session.log(LogError, "Error writing to gateway: %s", err.Error())
+					return
+				}
+			}
+
+			w.queuedEvents = nil
 		}
 	}
 }
@@ -106,7 +134,7 @@ func (w *wsWriter) sendClose(body []byte) error {
 
 }
 
-func (w *wsWriter) Queue(data interface{}) {
+func (w *wsWriter) Queue(data outgoingEvent) {
 	select {
 	case <-time.After(time.Second * 10):
 	case <-w.closer:
@@ -177,10 +205,10 @@ func (wh *wsHeartBeater) SendBeat() {
 	wh.Lock()
 	wh.lastSend = time.Now()
 	wh.Unlock()
-	
+
 	seq := atomic.LoadInt64(wh.sequence)
 
-	wh.writer.Queue(&outgoingEvent{
+	wh.writer.Queue(outgoingEvent{
 		Operation: GatewayOPHeartbeat,
 		Data:      seq,
 	})

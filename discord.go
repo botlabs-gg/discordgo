@@ -17,16 +17,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/hashicorp/go-cleanhttp"
 	"log"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/hashicorp/go-cleanhttp"
 )
 
 // VERSION of DiscordGo, follows Semantic Versioning. (http://semver.org/)
-const VERSION = "0.18.0-alpha"
+const VERSION = "unknown-jonas"
 
 // ErrMFA will be risen by New when the user has 2FA.
 var ErrMFA = errors.New("account has 2FA enabled")
