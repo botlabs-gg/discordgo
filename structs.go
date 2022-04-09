@@ -764,6 +764,9 @@ type Member struct {
 
 	// A list of IDs of the roles which are possessed by the member.
 	Roles IDSlice `json:"roles,string"`
+
+	// Whether the user has not yet passed the guild's Membership Screening requirements
+	Pending bool `json:"pending"`
 }
 
 func (m *Member) GetGuildID() int64 {
