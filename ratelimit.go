@@ -1,7 +1,6 @@
 package discordgo
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
@@ -251,7 +250,7 @@ func (b *Bucket) Release(headers http.Header, lockCounter int64) error {
 		if err != nil {
 			return err
 		}
-    
+
 		b.reset = time.Now().Add(dur)
 	}
 
